@@ -34,11 +34,19 @@ def video_post_save(sender, instance, created, **kwargs):
              
 @receiver(post_delete, sender=Movie)
 def auto_delete_file_on_delete(sender, instance, **kwargs):
-    if instance.video_file:
-        instance.video_file.delete(False)
-        print(f'{instance.video_file} was deleted')
-    if instance.thumbnail:
-        instance.thumbnail.delete(False)
-        print(f'{instance.thumbnail} was deleted')
+    file_fields = [
+        'video_file',
+        'thumbnail',
+        'trailer',
+        'video_120p',
+        'video_360p',
+        'video_720p',
+        'video_1080p'
+    ]
+    for field in file_fields:
+        file_field = getattr(instance, field, None)
+        if file_field:
+            file_field.delete(False)
+            print(f'{file_field} was deleted')
 
     
