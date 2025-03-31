@@ -14,8 +14,7 @@ class MovieSerializer(serializers.ModelSerializer):
             try:
                 progress = MovieProgress.objects.get(movie=obj, user=user)
                 return {
-                    "seconds": progress.seconds,
-                    "percentage": progress.progress
+                    "progressInSeconds": progress.progressInseconds
                 }
             except MovieProgress.DoesNotExist:
                 return None
