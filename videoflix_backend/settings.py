@@ -42,8 +42,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'movies.apps.MoviesConfig',
     'rest_framework',
+    'rest_framework.authtoken',
     'debug_toolbar',
     'django_rq',
+    'users'
 ]
 
 MIDDLEWARE = [
@@ -113,6 +115,7 @@ DATABASES = {
     }
 }
 
+AUTH_USER_MODEL = 'users.CustomUser'
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -155,3 +158,7 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+FRONTEND_URL = "http://localhost:5173"
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "noreply@videoflix.local"

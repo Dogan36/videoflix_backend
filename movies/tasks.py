@@ -3,6 +3,7 @@ import os
 from movies.utils.video import convert_video_to_resolution
 from movies.models import Movie
 from django.conf import settings
+import subprocess
 
 
 def convert_resolution(source_path, movie_id, resolution):
@@ -39,3 +40,5 @@ def finalize_conversion(path, movie_id):
         print(f"🗑️ Original gelöscht: {path}")
     except Exception as e:
         print(f"❗ Fehler beim Löschen: {e}")
+        
+

@@ -8,5 +8,8 @@ class MovieAdmin(admin.ModelAdmin):
         'video_360p',
         'video_720p',
         'video_1080p',
+        'duration',
+        'conversion_started',
+        'created_at',
     ]
 admin.site.register(Category)

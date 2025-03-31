@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -13,6 +14,7 @@ class Movie(models.Model):
     categories = models.ManyToManyField(Category, related_name="movies")
     thumbnail = models.ImageField(upload_to='thumbnails/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    duration = models.PositiveIntegerField(help_text="Video duration in seconds", editable=False, null=True, blank=True)
     conversion_started = models.BooleanField(default=False)
     video_file = models.FileField(upload_to='videos/', blank=True, null=True)
     video_120p = models.FileField(null=True, blank=True)
@@ -22,3 +24,15 @@ class Movie(models.Model):
     trailer = models.FileField(upload_to='trailers/', blank=True, null=True)
     def __str__(self):
         return self.title
+
+class MovieProgress(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="movie_progress")
+    movie = models.ForeignKey("Movie", on_delete=models.CASCADE, related_name="progress_entries")
+    progressInSeconds = models.PositiveIntegerField(null=True, blank=True)
+    finished = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ("user", "movie")  # Jeder User kann pro Movie nur einen Eintrag haben
+
+    def __str__(self):
+        return f"{self.user.email} – {self.movie.title} – {self.progress}s"

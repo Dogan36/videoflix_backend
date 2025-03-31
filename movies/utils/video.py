@@ -27,3 +27,29 @@ def convert_video_to_resolution(source_path, resolution):
     subprocess.run(command, check=True)
     print(f"✅ {resolution}p-Version gespeichert unter: {target_path}")
     return target_path
+
+def generate_thumbnail(video_path, output_path, time='00:00:05'):
+    command = [
+        'ffmpeg',
+        '-ss', time,
+        '-i', video_path,
+        '-frames:v', '1',
+        '-q:v', '2',  # Qualität 1 (beste) bis 31 (schlechteste)
+        output_path
+    ]
+
+    subprocess.run(command, check=True)
+    return output_path
+
+def get_video_duration(video_path):
+    command = [
+        'ffprobe',
+        '-v', 'error',
+        '-show_entries', 'format=duration',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        video_path
+    ]
+
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    duration = float(result.stdout.strip())
+    return duration
