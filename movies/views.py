@@ -1,4 +1,6 @@
 from rest_framework import generics, permissions
+
+from movies.throttles import VideoStreamRateThrottle
 from .models import Movie, MovieProgress, Category
 from .serializers import MovieSerializer, MovieProgressSerializer
 from rest_framework.exceptions import PermissionDenied
@@ -8,6 +10,8 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
+from django.http import FileResponse
+import os
 
 class MovieListAPIView(generics.ListAPIView):
     queryset = Movie.objects.all().order_by('-created_at')
@@ -61,9 +65,6 @@ class MovieDetailAPIView(generics.RetrieveAPIView):
     queryset = Movie.objects.all()
     serializer_class = MovieSerializer
     permission_classes = [permissions.AllowAny]
-
-
-
 
 class MovieProgressUpdateAPIView(generics.CreateAPIView):
     serializer_class = MovieProgressSerializer
@@ -125,7 +126,6 @@ class ContinueWatchingAPIView(ListAPIView):
         return Movie.objects.filter(id__in=progress_qs.values_list('movie_id', flat=True))
 
 
-
 class WatchedMoviesAPIView(ListAPIView):
     serializer_class = MovieSerializer
     pagination_class = StandardMoviePagination
@@ -134,3 +134,25 @@ class WatchedMoviesAPIView(ListAPIView):
     def get_queryset(self):
         progress_qs = MovieProgress.objects.filter(user=self.request.user, progress__gte=95).order_by('-updated_at')
         return Movie.objects.filter(id__in=progress_qs.values_list('movie_id', flat=True))
+    
+
+class ServeVideoView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [VideoStreamRateThrottle]
+
+    def get(self, request, pk, resolution):
+        try:
+            movie = Movie.objects.get(id=pk)
+        except Movie.DoesNotExist:
+            return Response({"detail": "Movie not found."}, status=404)
+
+        video_field = getattr(movie, f"video_{resolution}p", None)
+
+        if not video_field or not video_field.name:
+            return Response({"detail": f"{resolution}p version not available."}, status=404)
+
+        video_path = video_field.path
+        if not os.path.exists(video_path):
+            return Response({"detail": "Video file not found."}, status=404)
+
+        return FileResponse(open(video_path, 'rb'), content_type='video/mp4')

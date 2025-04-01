@@ -9,7 +9,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework import status
 from django.core.exceptions import ObjectDoesNotExist
 from .emails import send_activation_email
-
+from django.contrib.auth import get_user_model
 
 class RegisterView(APIView):
     def post(self, request):
@@ -80,4 +80,15 @@ class ResendActivationView(APIView):
         except ObjectDoesNotExist:
             # Gib trotzdem dieselbe Antwort aus Sicherheitsgründen
             return Response({"detail": "Activation email resent."})
+
+User = get_user_model()
+       
+class CheckEmailExistsAPIView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        if not email:
+            return Response({"detail": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        exists = User.objects.filter(email=email).exists()
+        return Response({"exists": exists}, status=status.HTTP_200_OK)
 
