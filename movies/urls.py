@@ -5,6 +5,7 @@ from . import views
 app_name = "movies"
 
 urlpatterns = [
+    path('', views.TestView.as_view(), name='test'),
     path('movies/', views.MovieListAPIView.as_view(), name='movie-list'),
     path('movies/home/', views.HomeMoviesAPIView.as_view(), name='movies-home'),
     path('movies/by-category/<int:category_id>/', views.MoviesByCategoryAPIView.as_view(), name='movies-by-category'),

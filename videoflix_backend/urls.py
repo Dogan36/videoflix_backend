@@ -14,20 +14,25 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-import stat
+
 from django.contrib import admin
 from django.urls import path
 from django.conf.urls import include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
+from django.views import View
 
-
+class WelcomeView(View):
+    def get(self, request):
+        return JsonResponse({"message": "🎬 Welcome to Videoflix!"})
 urlpatterns = [
+    path('', WelcomeView.as_view(), name="welcome"),
     path('admin/', admin.site.urls),
     path('__debug__/', include('debug_toolbar.urls')),
     path('django-rq/', include('django_rq.urls')),
-    path("api/users/", include("users.urls", namespace="users")),
-    path("api/movies/", include("movies.urls", namespace="movies")),
+    path("users/", include("users.urls", namespace="users")),
+    path("movies/", include("movies.urls", namespace="movies")),
 ] 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

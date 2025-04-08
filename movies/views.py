@@ -13,6 +13,11 @@ from rest_framework.views import APIView
 from django.http import FileResponse
 import os
 
+class TestView(APIView):
+    def get(self, request):
+        print("✅ TestView wurde aufgerufen")
+        return Response({"message": "Test erfolgreich"})
+
 class MovieListAPIView(generics.ListAPIView):
     queryset = Movie.objects.all().order_by('-created_at')
     serializer_class = MovieSerializer
