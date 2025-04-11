@@ -1,5 +1,5 @@
 
-from movies.tasks import convert_resolution, finalize_conversion
+from movies.tasks import convert_resolution
 
 from .models import Movie
 from movies.utils.wait import wait_until_file_is_ready
@@ -9,7 +9,7 @@ import django_rq
 import os
 from django.conf import settings
 from django.core.files import File
-from movies.utils.video import generate_thumbnail, get_video_duration
+from movies.utils.video import generate_thumbnail, get_video_duration, cut_video_for_trailer
 
 
 
@@ -67,6 +67,22 @@ def video_post_save(sender, instance, created, **kwargs):
                 instance.save(update_fields=["duration"])
         except Exception as e:
             print(f"⚠️ Fehler beim Auslesen der Dauer: {e}")    
+    
+    if created and not instance.trailer:
+        try:
+            trailer_folder = os.path.join(settings.MEDIA_ROOT, "trailers")
+            os.makedirs(trailer_folder, exist_ok=True)
+            trailer_path = os.path.join(trailer_folder, f"{instance.id}_trailer.mp4")
+
+            cut_video_for_trailer(path, trailer_path)
+
+            with open(trailer_path, 'rb') as f:
+                instance.trailer.save(f"{instance.id}_trailer.mp4", File(f), save=True)
+
+            print("📸 Trailer erfolgreich erstellt.")
+        except Exception as e:
+            print(f"⚠️ Fehler beim Erstellen des Trailers: {e}")
+
 
 @receiver(post_delete, sender=Movie)
 def auto_delete_file_on_delete(sender, instance, **kwargs):

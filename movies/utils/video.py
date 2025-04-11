@@ -53,3 +53,18 @@ def get_video_duration(video_path):
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     duration = float(result.stdout.strip())
     return duration
+
+def cut_video_for_trailer(video_path, output_path, duration=10):
+    command = [
+        'ffmpeg',
+        '-i', video_path,
+        '-t', str(duration),
+        '-c:v', 'libx264',
+        '-preset', 'slow',
+        '-crf', '22',
+        output_path
+    ]
+
+    subprocess.run(command, check=True)
+    return output_path
+
