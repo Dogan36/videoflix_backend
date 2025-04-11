@@ -85,7 +85,12 @@ INTERNAL_IPS = [
 CORS_ALLOW_ALL_ORIGINS = True  # nur für Entwicklung!
 
 REST_FRAMEWORK = {
-   
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+      
+        
+    ],
+    # ggf. weitere REST-Framework-Einstellungen
 }
 
 CACHES = {

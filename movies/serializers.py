@@ -6,7 +6,7 @@ class MovieSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Movie
-        fields = ['id', 'title', 'description', 'thumbnail', 'category', 'progress']
+        fields = ['id', 'title', 'description', 'thumbnail', 'categories', 'progress']
 
     def get_progress(self, obj):
         user = self.context.get('request').user
@@ -24,5 +24,5 @@ class MovieSerializer(serializers.ModelSerializer):
 class MovieProgressSerializer(serializers.ModelSerializer):
     class Meta:
         model = MovieProgress
-        fields = ['id', 'movie', 'progress', 'updated_at']
-        read_only_fields = ['id', 'updated_at']
+        fields = ['id', 'movie', 'progress']
+        read_only_fields = ['id']

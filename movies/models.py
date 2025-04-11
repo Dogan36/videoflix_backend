@@ -35,4 +35,4 @@ class MovieProgress(models.Model):
         unique_together = ("user", "movie")  # Jeder User kann pro Movie nur einen Eintrag haben
 
     def __str__(self):
-        return f"{self.user.email} – {self.movie.title} – {self.progress}s"
+        return f"{self.user.email} – {self.movie.title} – {self.progress}"

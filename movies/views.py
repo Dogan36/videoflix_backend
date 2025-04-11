@@ -13,29 +13,23 @@ from rest_framework.views import APIView
 from django.http import FileResponse
 import os
 
-class TestView(APIView):
-    def get(self, request):
-        print("✅ TestView wurde aufgerufen")
-        return Response({"message": "Test erfolgreich"})
 
-class MovieListAPIView(generics.ListAPIView):
-    queryset = Movie.objects.all().order_by('-created_at')
-    serializer_class = MovieSerializer
-    permission_classes = [permissions.AllowAny]
+
+
 
 class HomeMoviesAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        print("request.user:", request.user)
         user = request.user
 
-        # Neuste 5 Filme
+        print(Movie.objects.all())
         newest_movies = Movie.objects.order_by('-created_at')[:5]
 
         # Zuletzt angesehene Filme (nach aktualisiertem Progress)
         recently_watched_ids = (
             MovieProgress.objects.filter(user=user)
-            .order_by('-updated_at')
             .values_list('movie_id', flat=True)
             .distinct()
         )
@@ -52,17 +46,17 @@ class HomeMoviesAPIView(APIView):
         category_data = []
         categories = Category.objects.all()
         for category in categories:
-            movies = Movie.objects.filter(category=category)[:5]
-            serialized = MovieSerializer(movies, many=True).data
+            movies = Movie.objects.filter(categories=category)[:5]
+            serialized = MovieSerializer(movies, many=True, context={'request': request}).data
             category_data.append({
                 "category": category.name,
                 "movies": serialized
             })
 
         return Response({
-            "newest": MovieSerializer(newest_movies, many=True).data,
-            "recently_watched": MovieSerializer(recently_watched_movies, many=True).data,
-            "finished": MovieSerializer(finished_movies, many=True).data,
+            "newest": MovieSerializer(newest_movies, many=True, context={'request': request}).data,
+            "recently_watched": MovieSerializer(recently_watched_movies, many=True, context={'request': request}).data,
+            "finished": MovieSerializer(finished_movies, many=True, context={'request': request}).data,
             "categories": category_data
         })
 
@@ -111,7 +105,6 @@ class MoviesByCategoryAPIView(ListAPIView):
     serializer_class = MovieSerializer
     pagination_class = StandardMoviePagination
     
-    
     def get_queryset(self):
         category_id = self.kwargs.get('category_id')
         return Movie.objects.filter(category_id=category_id).order_by('-created_at')
@@ -127,7 +120,7 @@ class ContinueWatchingAPIView(ListAPIView):
         return context
 
     def get_queryset(self):
-        progress_qs = MovieProgress.objects.filter(user=self.request.user, progressInSeconds__gt=2).order_by('-updated_at')
+        progress_qs = MovieProgress.objects.filter(user=self.request.user, progressInSeconds__gt=2)
         return Movie.objects.filter(id__in=progress_qs.values_list('movie_id', flat=True))
 
 
@@ -137,7 +130,7 @@ class WatchedMoviesAPIView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        progress_qs = MovieProgress.objects.filter(user=self.request.user, progress__gte=95).order_by('-updated_at')
+        progress_qs = MovieProgress.objects.filter(user=self.request.user, progress__gte=95)
         return Movie.objects.filter(id__in=progress_qs.values_list('movie_id', flat=True))
     
 

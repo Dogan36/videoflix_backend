@@ -13,16 +13,18 @@ from movies.utils.video import generate_thumbnail, get_video_duration
 
 
 
-receiver(post_save, sender=Movie)
+@receiver(post_save, sender=Movie)
 def video_post_save(sender, instance, created, **kwargs):
-    # Falls kein Video hochgeladen wurde, beenden
+    print("✅ Signal wurde aufgerufen")
     if not instance.video_file:
+        print("✅ Signal wurde aufgerufen")
         return
 
     path = instance.video_file.path
 
     # Schritt 1: Konvertierung (nur wenn noch nicht gestartet)
-    if created and not instance.conversion_started:
+    if instance.video_file and not instance.conversion_started:
+
         instance.conversion_started = True
         instance.save(update_fields=["conversion_started"])
 
