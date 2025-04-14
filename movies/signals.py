@@ -1,87 +1,60 @@
 
-from movies.tasks import convert_resolution
-
+from movies.tasks import save_converted_resolution, save_thumbnail, save_trailer, save_video_duration, finalize_conversion
 from .models import Movie
 from movies.utils.wait import wait_until_file_is_ready
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 import django_rq
-import os
-from django.conf import settings
-from django.core.files import File
-from movies.utils.video import generate_thumbnail, get_video_duration, cut_video_for_trailer
-
 
 
 @receiver(post_save, sender=Movie)
 def video_post_save(sender, instance, created, **kwargs):
     print("✅ Signal wurde aufgerufen")
     if not instance.video_file:
-        print("✅ Signal wurde aufgerufen")
+        print("✅ Signal wurde aufgerufen, aber keine Videodatei gefunden")
         return
 
     path = instance.video_file.path
+    print(f"DEBUG: Dateipfad der Videodatei: {path}")
 
-    # Schritt 1: Konvertierung (nur wenn noch nicht gestartet)
-    if instance.video_file and not instance.conversion_started:
-
+    # Schritt 1: Konvertierung, wenn noch nicht gestartet
+    if not instance.conversion_started:
+        print("DEBUG: Konvertierung wurde noch nicht gestartet. Setze Flag und starte Jobs.")
         instance.conversion_started = True
         instance.save(update_fields=["conversion_started"])
 
         if wait_until_file_is_ready(path, check_interval=3, required_stable_checks=2, max_wait=1800):
-            print(f"✅ Datei gefunden. Starte Konvertierung über RQ.")
+            print("✅ Datei gefunden. Starte Konvertierung über RQ.")
             queue = django_rq.get_queue('default')
             movie_id = instance.id
-
+         
+            # Enqueue der konvertierung tasks für verschiedene Auflösungen
             resolutions = [120, 360, 720, 1080]
-            jobs = [
-                queue.enqueue(convert_resolution, path, movie_id, res)
+            conversion_jobs = [
+                queue.enqueue(save_converted_resolution, path, movie_id, res)
                 for res in resolutions
             ]
+            print("DEBUG: Konvertierungs-Jobs enqueued.")
 
-            queue.enqueue("movies.tasks.finalize_conversion", path, movie_id, depends_on=jobs)
+            # Enqueue Thumbnail-Erstellung
+            thumbnail_job = queue.enqueue(save_thumbnail, movie_id, path)
+            print("DEBUG: Thumbnail-Job enqueued.")
+
+            # Enqueue Trailer-Erstellung
+            trailer_job = queue.enqueue(save_trailer, movie_id, path)
+            print("DEBUG: Trailer-Job enqueued.")
+
+            duration_job = queue.enqueue(save_video_duration, movie_id, path)
+            print("DEBUG: Duration-Job enqueued.")
+            # Alle Jobs in einer Liste zusammenführen
+            all_jobs = conversion_jobs + [thumbnail_job, trailer_job, duration_job]
+            for job in all_jobs:
+                print(f"DEBUG: Job {job.id} hat func_name: '{job.func_name}'")
+            # Enqueue finale Aufgabe, die von allen anderen abhängt
+            queue.enqueue(finalize_conversion, path, movie_id, depends_on=all_jobs)
+            print("DEBUG: Finalize Conversion-Job enqueued (hängt von allen Teiljobs ab).")
         else:
-            print(f"❌ Datei konnte nach 1800s nicht stabil geladen werden.")
-
-    # Schritt 2: Thumbnail automatisch erstellen (nur wenn nicht vorhanden)
-    if created and not instance.thumbnail:
-        try:
-            thumb_folder = os.path.join(settings.MEDIA_ROOT, "thumbnails")
-            os.makedirs(thumb_folder, exist_ok=True)
-            thumb_path = os.path.join(thumb_folder, f"{instance.id}_thumb.webp")
-
-            generate_thumbnail(path, thumb_path)
-            with open(thumb_path, 'rb') as f:
-                instance.thumbnail.save(f"{instance.id}_thumb.webp", File(f), save=True)
-
-            print("📸 Thumbnail erfolgreich erstellt.")
-        except Exception as e:
-            print(f"⚠️ Fehler beim Erstellen des Thumbnails: {e}")
-
-    # Schritt 3: Dauer setzen (nur wenn noch nicht gesetzt)
-    if created and not instance.duration:
-        try:
-            duration = get_video_duration(path)
-            if duration:
-                instance.duration = duration
-                instance.save(update_fields=["duration"])
-        except Exception as e:
-            print(f"⚠️ Fehler beim Auslesen der Dauer: {e}")    
-    
-    if created and not instance.trailer:
-        try:
-            trailer_folder = os.path.join(settings.MEDIA_ROOT, "trailers")
-            os.makedirs(trailer_folder, exist_ok=True)
-            trailer_path = os.path.join(trailer_folder, f"{instance.id}_trailer.mp4")
-
-            cut_video_for_trailer(path, trailer_path)
-
-            with open(trailer_path, 'rb') as f:
-                instance.trailer.save(f"{instance.id}_trailer.mp4", File(f), save=True)
-
-            print("📸 Trailer erfolgreich erstellt.")
-        except Exception as e:
-            print(f"⚠️ Fehler beim Erstellen des Trailers: {e}")
+            print("❌ Datei konnte nach 1800s nicht stabil geladen werden.")
 
 
 @receiver(post_delete, sender=Movie)
@@ -98,8 +71,8 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
     for field in file_fields:
         file_field = getattr(instance, field, None)
         if file_field:
-            file_field.delete(False)
             print(f'{file_field} was deleted')
+            file_field.delete(False)
 
 
 

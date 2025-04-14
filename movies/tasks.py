@@ -6,11 +6,18 @@ from django.conf import settings
 from django.core.files import File
 
 
-def convert_resolution(source_path, movie_id, resolution):
+def save_converted_resolution(source_path, movie_id, resolution):
+    print(f"DEBUG: Starte Konvertierung: {resolution}p für Movie-ID {movie_id}")
     target_path = convert_video_to_resolution(source_path, resolution)
     relative_path = os.path.relpath(target_path, settings.MEDIA_ROOT)
-    
-    movie = Movie.objects.get(id=movie_id)
+    print(f"DEBUG: Zielpfad für {resolution}p: {relative_path}")
+
+    try:
+        movie = Movie.objects.get(id=movie_id)
+        print(f"DEBUG: Movie gefunden: {movie}")
+    except Movie.DoesNotExist:
+        print(f"⚠️ Fehler: Kein Movie mit ID {movie_id} gefunden!")
+        raise
 
     field_map = {
         120: 'video_120p',
@@ -18,58 +25,99 @@ def convert_resolution(source_path, movie_id, resolution):
         720: 'video_720p',
         1080: 'video_1080p',
     }
-
     field_name = field_map.get(resolution)
     if field_name:
         setattr(movie, field_name, relative_path)
         movie.save(update_fields=[field_name])
+        print(f"DEBUG: {field_name} für Movie-ID {movie_id} gespeichert.")
     else:
         print(f"⚠️ Unbekannte Auflösung: {resolution}")
+
+
+
+def save_thumbnail(movie_id, source_path):
+    print(f"DEBUG: Starte Thumbnail-Erstellung für Movie-ID {movie_id}")
+    try:
+        movie = Movie.objects.get(id=movie_id)
+    except Movie.DoesNotExist:
+        print(f"⚠️ Fehler: Kein Movie mit ID {movie_id} gefunden beim Thumbnail-Erstellen!")
+        raise
+
+    thumb_folder = os.path.join(settings.MEDIA_ROOT, "thumbnails")
+    os.makedirs(thumb_folder, exist_ok=True)
+    thumb_path = os.path.join(thumb_folder, f"{movie.title}_thumb.webp")
+    print(f"DEBUG: Thumbnail-Pfad: {thumb_path}")
+
+    generate_thumbnail(source_path, thumb_path)
+    print("DEBUG: Thumbnail generiert.")
+
+    setattr(movie, "thumbnail", thumb_path)
+    movie.save(update_fields=["thumbnail"])
+    print("📸 Thumbnail erfolgreich gespeichert.")
+
+
+def save_trailer(movie_id, source_path):
+    print(f"DEBUG: Starte Trailer-Erstellung für Movie-ID {movie_id}")
+    try:
+        movie = Movie.objects.get(id=movie_id)
+    except Movie.DoesNotExist:
+        print(f"⚠️ Fehler: Kein Movie mit ID {movie_id} gefunden beim Trailer-Erstellen!")
+        raise
+
+    trailer_folder = os.path.join(settings.MEDIA_ROOT, "trailers")
+    os.makedirs(trailer_folder, exist_ok=True)
+    trailer_path = os.path.join(trailer_folder, f"{movie.title}_trailer.mp4")
+    print(f"DEBUG: Trailer-Pfad: {trailer_path}")
+
+    cut_video_for_trailer(source_path, trailer_path)
+    print("DEBUG: Trailer wurde erstellt.")
+
+    setattr(movie, "trailer", trailer_path)
+    movie.save(update_fields=["trailer"])
+    print("🎬 Trailer erfolgreich gespeichert.")
+
+def save_video_duration(movie_id, source_path):
+    print(f"DEBUG: Starte Dauer-Ermittlung für Movie-ID {movie_id}")
+    try:
+        movie = Movie.objects.get(id=movie_id)
+    except Movie.DoesNotExist:
+        print(f"⚠️ Fehler: Kein Movie mit ID {movie_id} gefunden beim Dauer-Ermitteln!")
+        raise
+
+    duration = get_video_duration(source_path)
+    print(f"DEBUG: Dauer ermittelt: {duration} Sekunden")
+
+    movie.duration = duration
+    movie.save(update_fields=["duration"])
+    print("DEBUG: Dauer erfolgreich gespeichert.")
 
 def finalize_conversion(path, movie_id):
     print("✅ Alle Konvertierungen abgeschlossen. Original wird gelöscht.")
     from movies.models import Movie
     movie = Movie.objects.get(id=movie_id)
 
-    if not movie.trailer and os.path.exists(path):
-        try:
-            trailer_folder = os.path.join(settings.MEDIA_ROOT, "trailers")
-            os.makedirs(trailer_folder, exist_ok=True)
-            trailer_filename = f"{movie_id}_trailer.mp4"
-            trailer_path = os.path.join(trailer_folder, trailer_filename)
-
-            # Erstelle den Trailer (z. B. die ersten 10 Sekunden)
-            cut_video_for_trailer(path, trailer_path, duration=10)
-            with open(trailer_path, "rb") as f:
-                movie.trailer.save(trailer_filename, File(f), save=True)
-            print(f"🎬 Trailer erfolgreich erstellt: {trailer_filename}")
-        except Exception as e:
-            print(f"❗ Fehler beim Erstellen des Trailers: {e}")
-
-    # Schritt: Thumbnail erstellen, falls noch nicht vorhanden
-    if not movie.thumbnail and os.path.exists(path):
-        try:
-            thumb_folder = os.path.join(settings.MEDIA_ROOT, "thumbnails")
-            os.makedirs(thumb_folder, exist_ok=True)
-            thumb_filename = f"{movie_id}_thumb.webp"
-            thumb_path = os.path.join(thumb_folder, thumb_filename)
-
-            generate_thumbnail(path, thumb_path)  # Nutzt ffmpeg, um einen Schnappschuss zu erzeugen
-            with open(thumb_path, "rb") as f:
-                movie.thumbnail.save(thumb_filename, File(f), save=True)
-            print(f"📸 Thumbnail erfolgreich erstellt: {thumb_filename}")
-        except Exception as e:
-            print(f"❗ Fehler beim Erstellen des Thumbnails: {e}")
-    
     # Setze Status "bereit"
     movie.ready = True
-    movie.save()
-    
+
     try:
-        os.remove(path)
-        print(f"🗑️ Original gelöscht: {path}")
+        # Lösche die Datei über das FileField (das sorgt normalerweise
+        # auch dafür, dass der entsprechende Storage-Eintrag gelöscht wird).
+        if movie.video_file:
+            movie.video_file.delete(save=False)
+            print("✅ FileField 'video_file' wurde gelöscht.")
+
+        # Lösche die Datei explizit aus dem Dateisystem, falls noch vorhanden.
+        if os.path.exists(path):
+            os.remove(path)
+            print(f"🗑️ Original gelöscht: {path}")
+        else:
+            print("❗ Originaldatei wurde im Dateisystem nicht gefunden.")
     except Exception as e:
         print(f"❗ Fehler beim Löschen: {e}")
+
+    # Setze das FileField im Model zurück (leeren)
+    movie.video_file = None
+    movie.save(update_fields=["ready", "video_file"])
         
 
 
