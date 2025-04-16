@@ -73,8 +73,10 @@ def save_trailer(movie_id, source_path):
     print("DEBUG: Trailer wurde erstellt.")
 
     setattr(movie, "trailer", trailer_path)
+    # Removed undefined 'debugger' statement
     movie.save(update_fields=["trailer"])
     print("🎬 Trailer erfolgreich gespeichert.")
+
 
 def save_video_duration(movie_id, source_path):
     print(f"DEBUG: Starte Dauer-Ermittlung für Movie-ID {movie_id}")
@@ -96,9 +98,6 @@ def finalize_conversion(path, movie_id):
     from movies.models import Movie
     movie = Movie.objects.get(id=movie_id)
 
-    # Setze Status "bereit"
-    movie.ready = True
-
     try:
         # Lösche die Datei über das FileField (das sorgt normalerweise
         # auch dafür, dass der entsprechende Storage-Eintrag gelöscht wird).
@@ -117,7 +116,7 @@ def finalize_conversion(path, movie_id):
 
     # Setze das FileField im Model zurück (leeren)
     movie.video_file = None
-    movie.save(update_fields=["ready", "video_file"])
+    movie.save(update_fields=["video_file"])
         
 
 

@@ -54,7 +54,7 @@ def get_video_duration(video_path):
     duration = float(result.stdout.strip())
     return duration
 
-def cut_video_for_trailer(video_path, output_path, duration=10):
+def cut_video_for_trailer(video_path, output_path, duration=7):
     command = [
         'ffmpeg',
         '-i', video_path,

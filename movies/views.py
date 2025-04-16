@@ -1,8 +1,9 @@
 from rest_framework import generics, permissions
 
+from movies import pagination
 from movies.throttles import VideoStreamRateThrottle
 from .models import Movie, MovieProgress, Category
-from .serializers import MovieSerializer, MovieProgressSerializer
+from .serializers import MovieSerializer, MovieProgressSerializer, MovieFileSerializer
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework import status
@@ -19,13 +20,13 @@ import os
 
 class HomeMoviesAPIView(APIView):
     permission_classes = [IsAuthenticated]
-
+    pagination_class = pagination.StandardMoviePagination
     def get(self, request):
         print("request.user:", request.user)
         user = request.user
-
+        
         print(Movie.objects.all())
-        newest_movies = Movie.objects.order_by('-created_at')[:5]
+        newest_movies = Movie.objects.order_by('-created_at')
 
         # Zuletzt angesehene Filme (nach aktualisiertem Progress)
         recently_watched_ids = (
@@ -62,7 +63,7 @@ class HomeMoviesAPIView(APIView):
 
 class MovieDetailAPIView(generics.RetrieveAPIView):
     queryset = Movie.objects.all()
-    serializer_class = MovieSerializer
+    serializer_class = MovieFileSerializer
     permission_classes = [permissions.AllowAny]
 
 class MovieProgressUpdateAPIView(generics.CreateAPIView):

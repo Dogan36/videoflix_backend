@@ -17,7 +17,6 @@ def video_post_save(sender, instance, created, **kwargs):
     path = instance.video_file.path
     print(f"DEBUG: Dateipfad der Videodatei: {path}")
 
-    # Schritt 1: Konvertierung, wenn noch nicht gestartet
     if not instance.conversion_started:
         print("DEBUG: Konvertierung wurde noch nicht gestartet. Setze Flag und starte Jobs.")
         instance.conversion_started = True
