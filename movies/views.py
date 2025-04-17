@@ -1,3 +1,4 @@
+from urllib import request
 from rest_framework import generics, permissions
 
 from movies import pagination
@@ -13,7 +14,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from django.http import FileResponse
 import os
-
+from django.shortcuts import get_object_or_404
+from movies.utils.streaming import RangeFileResponse
 
 
 
@@ -65,6 +67,17 @@ class MovieDetailAPIView(generics.RetrieveAPIView):
     queryset = Movie.objects.all()
     serializer_class = MovieFileSerializer
     permission_classes = [permissions.AllowAny]
+
+class MovieStreamView(APIView):
+  
+
+    def get(self, request, pk, *args, **kwargs):
+        movie = get_object_or_404(Movie, pk=pk)
+        res = request.query_params.get("resolution", "360")
+        field = getattr(movie, f"video_{res}p", None)
+        if not field:
+            return Response({"detail": "Resolution not available"}, status=404)
+        return RangeFileResponse(request, field.path, content_type="video/mp4")
 
 class MovieProgressUpdateAPIView(generics.CreateAPIView):
     serializer_class = MovieProgressSerializer
