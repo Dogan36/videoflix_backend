@@ -127,6 +127,7 @@ class CheckEmailExistsAPIView(APIView):
 class RequestPasswordResetView(APIView):
     def post(self, request):
         email = request.data.get("email")
+        print(email)
         if not email:
             return Response({"detail": "E-Mail-Adresse ist erforderlich."}, status=400)
 
@@ -134,15 +135,7 @@ class RequestPasswordResetView(APIView):
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             return Response({"detail": "Kein Benutzer mit dieser E-Mail gefunden."}, status=404)
-
-        token = default_token_generator.make_token(user)
-        uid = user.pk
-
-        reset_url = request.build_absolute_uri(
-            reverse("users:reset-password-confirm", kwargs={"uid": uid, "token": token})
-        )
-
-        send_password_reset_email(user, reset_url)
+        send_password_reset_email(user)
         return Response({"detail": "E-Mail zum Zurücksetzen des Passworts wurde gesendet."}, status=200)
     
 
