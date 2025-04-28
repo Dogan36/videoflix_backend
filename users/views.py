@@ -11,6 +11,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from .emails import send_activation_email, send_password_reset_email
 from django.contrib.auth import get_user_model
 from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str 
  
 
 class RegisterView(APIView):
@@ -61,10 +62,10 @@ class LoginView(APIView):
     def post(self, request):
         print("✅ Login-View wurde aufgerufen")
         serializer = LoginSerializer(data=request.data, context={"request": request})
-
+        print(serializer.is_valid())
         if serializer.is_valid():
             user = serializer.validated_data["user"]
-
+            print(user.is_active)
             # User ist inaktiv (nicht verifiziert)
             if not user.is_active:
                 return Response(
@@ -138,8 +139,15 @@ class RequestPasswordResetView(APIView):
         send_password_reset_email(user)
         return Response({"detail": "E-Mail zum Zurücksetzen des Passworts wurde gesendet."}, status=200)
     
-
+def decode_uid(uidb64):
+    # 1) Base64 → bytes
+        uid_bytes = urlsafe_base64_decode(uidb64)
+    # 2) bytes → str
+        uid_str = force_str(uid_bytes)
+    # 3) str → int (Primary Key)
+        return int(uid_str)
 class ResetPasswordConfirmView(APIView):
+    
     def post(self, request, uid, token):
         password = request.data.get("password")
         password2 = request.data.get("password2")
@@ -151,7 +159,8 @@ class ResetPasswordConfirmView(APIView):
             return Response({"detail": "Passwörter stimmen nicht überein."}, status=400)
 
         try:
-            user = User.objects.get(pk=uid)
+            pk = decode_uid(uid)
+            user = CustomUser.objects.get(pk=pk)
         except User.DoesNotExist:
             return Response({"detail": "Benutzer nicht gefunden."}, status=404)
 
