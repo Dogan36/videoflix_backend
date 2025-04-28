@@ -24,13 +24,9 @@ class HomeMoviesAPIView(APIView):
     permission_classes = [IsAuthenticated]
     pagination_class = pagination.StandardMoviePagination
     def get(self, request):
-        print("request.user:", request.user)
         user = request.user
-        
-        print(Movie.objects.all())
         newest_movies = Movie.objects.order_by('-created_at')
 
-        # Zuletzt angesehene Filme (nach aktualisiertem Progress)
         recently_watched_ids = (
             MovieProgress.objects.filter(user=user)
             .values_list('movie_id', flat=True)
@@ -38,7 +34,6 @@ class HomeMoviesAPIView(APIView):
         )
         recently_watched_movies = Movie.objects.filter(id__in=recently_watched_ids)[:5]
 
-        # Bereits gesehene Filme (Progress >= 95%)
         finished_ids = (
             MovieProgress.objects.filter(user=user, finished=True)
             .values_list('movie_id', flat=True)

@@ -16,7 +16,6 @@ from django.utils.encoding import force_str
 
 class RegisterView(APIView):
     def post(self, request):
-        print(request.data)
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.validated_data['email']
@@ -60,13 +59,9 @@ class ActivateAccountView(APIView):
 
 class LoginView(APIView):
     def post(self, request):
-        print("✅ Login-View wurde aufgerufen")
         serializer = LoginSerializer(data=request.data, context={"request": request})
-        print(serializer.is_valid())
         if serializer.is_valid():
             user = serializer.validated_data["user"]
-            print(user.is_active)
-            # User ist inaktiv (nicht verifiziert)
             if not user.is_active:
                 return Response(
                     {"detail": "Account not activated. Please verify your email."},
@@ -80,7 +75,7 @@ class LoginView(APIView):
                 "email": user.email
             }, status=status.HTTP_200_OK)
 
-        # Falls die E-Mail nicht gefunden wurde → 404
+  
         email = request.data.get("email")
         if not CustomUser.objects.filter(email=email).exists():
             return Response(
@@ -116,9 +111,7 @@ User = get_user_model()
 class CheckEmailExistsAPIView(APIView):
     
     def post(self, request):
-        print("CheckEmailExistsAPIView")
         email = request.data.get("email")
-        print(email)
         if not email:
             return Response({"detail": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -128,7 +121,6 @@ class CheckEmailExistsAPIView(APIView):
 class RequestPasswordResetView(APIView):
     def post(self, request):
         email = request.data.get("email")
-        print(email)
         if not email:
             return Response({"detail": "E-Mail-Adresse ist erforderlich."}, status=400)
 

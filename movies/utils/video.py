@@ -4,7 +4,7 @@ import subprocess
 
 def convert_video_to_resolution(source_path, resolution):
     resolutions = {
-        120: (160, 120),
+        120: (210, 120),
         360: (640, 360),
         720: (1280, 720),
         1080: (1920, 1080),
@@ -25,7 +25,6 @@ def convert_video_to_resolution(source_path, resolution):
     ]
 
     subprocess.run(command, check=True)
-    print(f"✅ {resolution}p-Version gespeichert unter: {target_path}")
     return target_path
 
 def generate_thumbnail(video_path, output_path, time='00:00:05'):

@@ -8,13 +8,9 @@ from django.contrib.auth.tokens import default_token_generator
 
 def send_activation_email(user):
     token = default_token_generator.make_token(user)
-    print(token)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
-    print(uid)
     activation_path = reverse("users:activate", kwargs={"uid": uid, "token": token})
-    print(activation_path)
     activation_url = f"{settings.FRONTEND_URL}{activation_path}"
-    print(activation_url)
     subject = "Activate your Videoflix account"
 
     # HTML + Fallback Text
@@ -27,18 +23,12 @@ def send_activation_email(user):
     msg.send()
     
 def send_password_reset_email(user):
-    # 1. Token und UID erzeugen
     token = default_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
 
-    # 2. Pfad im Frontend über reverse bestimmen
     reset_url = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}"
 
-    print(reset_url)
-    # 3. Vollständige URL bauen
-    reset_url = f"{reset_url}"
 
-    # 4. Betreff und Kontext
     subject = "Reset your Videoflix password"
     context = {
         "user": user,
@@ -56,7 +46,7 @@ def send_password_reset_email(user):
         "If you didn't request this, just ignore this email."
     )
 
-    # 6. E‑Mail zusammenbauen und versenden
+
     msg = EmailMultiAlternatives(
         subject=subject,
         body=text_content,
