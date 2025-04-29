@@ -22,9 +22,10 @@ class MovieSerializer(serializers.ModelSerializer):
 
 class MovieFileSerializer(serializers.ModelSerializer):
     progressInSeconds = serializers.SerializerMethodField()
+    finished = serializers.SerializerMethodField()
     class Meta:
         model = Movie
-        fields = ['title', 'video_120p', 'video_360p', 'video_720p', 'video_1080p', 'progressInSeconds']
+        fields = ['title', 'video_120p', 'video_360p', 'video_720p', 'video_1080p', 'progressInSeconds', 'finished']
         
     def get_progressInSeconds(self, obj):
         """
@@ -37,6 +38,18 @@ class MovieFileSerializer(serializers.ModelSerializer):
             return mp.progressInSeconds or 0
         except MovieProgress.DoesNotExist:
             return 0
+    
+    def get_finished(self, obj):
+        """
+        Versuche, das MovieProgress-Objekt für request.user und dieses Movie zu laden.
+        Wenn keines existiert, gib False zurück.
+        """
+        user = self.context['request'].user
+        try:
+            mp = MovieProgress.objects.get(user=user, movie=obj)
+            return mp.finished or False
+        except MovieProgress.DoesNotExist:
+            return False
         
         
 class MovieProgressSerializer(serializers.ModelSerializer):

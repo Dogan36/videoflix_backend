@@ -48,11 +48,12 @@ class HomeMoviesAPIView(APIView):
         # 3) Recently Watched (nach progress.updated_at sortiert)
         recent_qs = (
             Movie.objects
-                 .filter(progress_entries__user=user)
+                 .filter(progress_entries__user=user, progress_entries__finished=False)
                  .annotate(
                      last_progress=Max(
                          'progress_entries__updated_at',
-                         filter=Q(progress_entries__user=user)
+                         filter=Q(progress_entries__user=user, 
+                                  progress_entries__finished=False)
                      )
                  )
                  .order_by('-last_progress')
