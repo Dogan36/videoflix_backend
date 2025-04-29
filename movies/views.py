@@ -16,56 +16,94 @@ from django.http import FileResponse
 import os
 from django.shortcuts import get_object_or_404
 from movies.utils.streaming import RangeFileResponse
-
-
-
-
+from .pagination import StandardMoviePagination
+from django.db.models import Max, Q
 class HomeMoviesAPIView(APIView):
+    """
+    Liefert für jede Sektion paginierte Ergebnisse mit 'results' und 'next'.
+    Query-Parameter: page_size (optional, default=5)
+    """
     permission_classes = [IsAuthenticated]
-    pagination_class = pagination.StandardMoviePagination
+
     def get(self, request):
         user = request.user
-        newest_movies = Movie.objects.order_by('-created_at')
+        # 1) page_size extrahieren
+        try:
+            page_size = int(request.query_params.get('page_size', 5))
+        except ValueError:
+            return Response(
+                {"detail": "Invalid page_size parameter. Must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        recently_watched_ids = (
-            MovieProgress.objects.filter(user=user)
-            .values_list('movie_id', flat=True)
-            .distinct()
+        paginator = StandardMoviePagination()
+        paginator.page_size = page_size
+
+        # 2) Newest
+        newest_qs = Movie.objects.order_by('-created_at')
+        newest_page = paginator.paginate_queryset(newest_qs, request, view=self)
+        newest_data = MovieSerializer(newest_page, many=True, context={'request': request}).data
+        newest_next = paginator.get_next_link()
+
+        # 3) Recently Watched (nach progress.updated_at sortiert)
+        recent_qs = (
+            Movie.objects
+                 .filter(progress_entries__user=user)
+                 .annotate(
+                     last_progress=Max(
+                         'progress_entries__updated_at',
+                         filter=Q(progress_entries__user=user)
+                     )
+                 )
+                 .order_by('-last_progress')
         )
-        recently_watched_movies = Movie.objects.filter(id__in=recently_watched_ids)[:5]
+        recent_page = paginator.paginate_queryset(recent_qs, request, view=self)
+        recent_data = MovieSerializer(recent_page, many=True, context={'request': request}).data
+        recent_next = paginator.get_next_link()
 
-        finished_ids = (
-            MovieProgress.objects.filter(user=user, finished=True)
-            .values_list('movie_id', flat=True)
+        # 4) Finished (nach progress.updated_at sortiert)
+        finished_qs = (
+            Movie.objects
+                 .filter(progress_entries__user=user, progress_entries__finished=True)
+                 .annotate(
+                     last_progress=Max(
+                         'progress_entries__updated_at',
+                         filter=Q(progress_entries__user=user, progress_entries__finished=True)
+                     )
+                 )
+                 .order_by('-last_progress')
         )
-        finished_movies = Movie.objects.filter(id__in=finished_ids)[:5]
+        finished_page = paginator.paginate_queryset(finished_qs, request, view=self)
+        finished_data = MovieSerializer(finished_page, many=True, context={'request': request}).data
+        finished_next = paginator.get_next_link()
 
-        # Filme pro Kategorie (je 5)
+        # 5) Categories (je nach category_id paginiert)
         category_data = []
-        categories = Category.objects.all()
-        for category in categories:
-            movies = Movie.objects.filter(categories=category)[:5]
-            serialized = MovieSerializer(movies, many=True, context={'request': request}).data
+        for category in Category.objects.all():
+            cat_qs = Movie.objects.filter(categories=category).order_by('-created_at')
+            cat_page = paginator.paginate_queryset(cat_qs, request, view=self)
+            cat_data = MovieSerializer(cat_page, many=True, context={'request': request}).data
+            cat_next = paginator.get_next_link()
             category_data.append({
                 "category": category.name,
-                "movies": serialized
+                "category_id": category.id,
+                "results": cat_data,
+                "next": cat_next
             })
 
         return Response({
-            "newest": MovieSerializer(newest_movies, many=True, context={'request': request}).data,
-            "recently_watched": MovieSerializer(recently_watched_movies, many=True, context={'request': request}).data,
-            "finished": MovieSerializer(finished_movies, many=True, context={'request': request}).data,
+            "newest": {"results": newest_data, "next": newest_next},
+            "recently_watched": {"results": recent_data, "next": recent_next},
+            "finished": {"results": finished_data, "next": finished_next},
             "categories": category_data
         })
 
 class MovieDetailAPIView(generics.RetrieveAPIView):
     queryset = Movie.objects.all()
     serializer_class = MovieFileSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 class MovieStreamView(APIView):
-  
-
     def get(self, request, pk, *args, **kwargs):
         movie = get_object_or_404(Movie, pk=pk)
         res = request.query_params.get("resolution", "360")
@@ -74,73 +112,61 @@ class MovieStreamView(APIView):
             return Response({"detail": "Resolution not available"}, status=404)
         return RangeFileResponse(request, field.path, content_type="video/mp4")
 
-class MovieProgressUpdateAPIView(generics.CreateAPIView):
-    serializer_class = MovieProgressSerializer
+class UpdateProgressAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request, pk):
-        user = request.user
-        movie_id = pk
-        seconds = request.data.get('progressInSeconds')
-
-        if seconds is None:
-            return Response({"detail": "progressInSeconds is required."}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            seconds = int(seconds)
-        except ValueError:
-            return Response({"detail": "progressInSeconds must be an integer."}, status=status.HTTP_400_BAD_REQUEST)
-
-        progress, created = MovieProgress.objects.get_or_create(user=user, movie_id=movie_id)
-        progress.progressInSeconds = seconds
-
-        try:
-            movie = Movie.objects.get(id=movie_id)
-            if seconds and movie.duration:
-                percent = (seconds / movie.duration) * 100
-                progress.finished = percent >= 95
-        except Movie.DoesNotExist:
-            return Response({"detail": "Movie not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        progress.save()
-        serializer = MovieProgressSerializer(progress)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    print(request)
+    def post(self, request):
+        serializer = MovieProgressSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'detail': 'Progress updated.'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-class StandardMoviePagination(PageNumberPagination):
-    page_size = 5
-    page_size_query_param = 'page_size'
 
-class MoviesByCategoryAPIView(ListAPIView):
-    serializer_class = MovieSerializer
-    pagination_class = StandardMoviePagination
-    
-    def get_queryset(self):
-        category_id = self.kwargs.get('category_id')
-        return Movie.objects.filter(category_id=category_id).order_by('-created_at')
 
-class ContinueWatchingAPIView(ListAPIView):
+class LoadMoreMoviesAPIView(ListAPIView):
+    """
+    Unified endpoint to load more movies for different sections:
+    - section=newest
+    - section=recently_watched
+    - section=finished
+    - section=category (requires category_id)
+    """
     serializer_class = MovieSerializer
-    pagination_class = StandardMoviePagination
     permission_classes = [IsAuthenticated]
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['request'] = self.request
-        return context
-
-    def get_queryset(self):
-        progress_qs = MovieProgress.objects.filter(user=self.request.user, progressInSeconds__gt=2)
-        return Movie.objects.filter(id__in=progress_qs.values_list('movie_id', flat=True))
-
-
-class WatchedMoviesAPIView(ListAPIView):
-    serializer_class = MovieSerializer
     pagination_class = StandardMoviePagination
-    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        progress_qs = MovieProgress.objects.filter(user=self.request.user, progress__gte=95)
-        return Movie.objects.filter(id__in=progress_qs.values_list('movie_id', flat=True))
+        user = self.request.user
+        params = self.request.query_params
+        section = params.get('section')
+
+        if section == 'newest':
+            return Movie.objects.order_by('-created_at')
+
+        if section == 'recently_watched':
+            ids = (
+                MovieProgress.objects
+                    .filter(user=user)
+                    .values_list('movie_id', flat=True)
+                    .distinct()
+            )
+            return Movie.objects.filter(id__in=ids).order_by('-updated_at')
+
+        if section == 'finished':
+            ids = (
+                MovieProgress.objects
+                    .filter(user=user, finished=True)
+                    .values_list('movie_id', flat=True)
+            )
+            return Movie.objects.filter(id__in=ids).order_by('-updated_at')
+
+        if section == 'category':
+            category_id = params.get('category_id')
+            return Movie.objects.filter(categories__id=category_id).order_by('-created_at')
+
+        # Fallback: leeres QuerySet
+        return Movie.objects.none()
     
 
 class ServeVideoView(APIView):

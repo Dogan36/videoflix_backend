@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Movie, Category
+from .models import Movie, Category, MovieProgress
 
 @admin.register(Movie)
 class MovieAdmin(admin.ModelAdmin):
@@ -13,3 +13,4 @@ class MovieAdmin(admin.ModelAdmin):
         'created_at',
     ]
 admin.site.register(Category)
+admin.site.register(MovieProgress)

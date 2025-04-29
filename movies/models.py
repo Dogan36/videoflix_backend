@@ -30,9 +30,9 @@ class MovieProgress(models.Model):
     movie = models.ForeignKey("Movie", on_delete=models.CASCADE, related_name="progress_entries")
     progressInSeconds = models.PositiveIntegerField(null=True, blank=True)
     finished = models.BooleanField(default=False)
-
+    updated_at = models.DateTimeField(auto_now=True)
     class Meta:
         unique_together = ("user", "movie")  # Jeder User kann pro Movie nur einen Eintrag haben
 
     def __str__(self):
-        return f"{self.user.email} – {self.movie.title} – {self.progress}"
+        return f"{self.user.email} – {self.movie.title}"
