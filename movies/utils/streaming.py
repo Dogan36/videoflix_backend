@@ -1,48 +1,48 @@
 import os
 import re
-from django.http import FileResponse, HttpResponse
-from wsgiref.util import FileWrapper
+from django.http import StreamingHttpResponse, FileResponse
 
-class RangeFileResponse(HttpResponse):
+class RangeFileResponse(StreamingHttpResponse):
     """
-    Eine sehr einfache FileResponse, die HTTP-Range-Requests bedient.
+    A simple response class that supports HTTP Range requests for byte ranges.
     """
     def __init__(self, request, filename, chunk_size=8192, content_type='application/octet-stream'):
         file_size = os.path.getsize(filename)
         range_header = request.META.get('HTTP_RANGE', '').strip()
         range_match = re.match(r'bytes=(\d+)-(\d*)', range_header)
-        
+
         if range_match:
+            # Parse the requested byte range
             start = int(range_match.group(1))
-            # End kann leer sein => bis Dateiende
-            end = range_match.group(2)
-            end = int(end) if end else file_size - 1
+            end_part = range_match.group(2)
+            end = int(end_part) if end_part else file_size - 1
             if end >= file_size:
                 end = file_size - 1
             length = end - start + 1
-            
-            # Partial Content
-            response = HttpResponse(status=206, content_type=content_type)
-            response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
-            response['Accept-Ranges'] = 'bytes'
-            response['Content-Length'] = str(length)
-            
-            # FileWrapper mit Slice
-            wrapper = FileWrapper(open(filename, 'rb'), chunk_size)
-            # skip bis zum Start
-            wrapper = (chunk for i, chunk in enumerate(wrapper) if i * chunk_size >= start and i * chunk_size <= end)
-            response.streaming_content = wrapper
+
+            # Prepare generator that yields only the requested slice
+            def stream():
+                with open(filename, 'rb') as f:
+                    f.seek(start)
+                    remaining = length
+                    while remaining > 0:
+                        chunk = f.read(min(chunk_size, remaining))
+                        if not chunk:
+                            break
+                        remaining -= len(chunk)
+                        yield chunk
+
+            status_code = 206  # Partial Content
+            super().__init__(stream(), status=status_code, content_type=content_type)
+            # Required headers for Range support
+            self['Content-Range']   = f'bytes {start}-{end}/{file_size}'
+            self['Accept-Ranges']   = 'bytes'
+            self['Content-Length']  = str(length)
+
         else:
-            # Kein Range-Header: Ganze Datei
+            # No Range header: serve the whole file
             response = FileResponse(open(filename, 'rb'), content_type=content_type)
-            response['Accept-Ranges'] = 'bytes'
-        
-        super().__init__(
-            content=response.streaming_content if hasattr(response, 'streaming_content') else response.content,
-            status=response.status_code,
-            content_type=content_type
-        )
-        # alle Range-Header übernehmen
-        for h in ('Content-Range', 'Accept-Ranges', 'Content-Length'):
-            if h in response:
-                self[h] = response[h]
+            super().__init__(response.streaming_content, status=response.status_code, content_type=content_type)
+            self['Accept-Ranges'] = 'bytes'
+
+        # Note: StreamingHttpResponse sets .streaming_content automatically

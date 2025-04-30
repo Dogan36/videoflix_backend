@@ -1,4 +1,3 @@
-
 import os
 from movies.utils.video import convert_video_to_resolution, generate_thumbnail, get_video_duration, cut_video_for_trailer
 from movies.models import Movie

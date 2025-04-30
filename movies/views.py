@@ -1,14 +1,10 @@
-from urllib import request
-from rest_framework import generics, permissions
 
-from movies import pagination
+from rest_framework import generics, permissions
 from movies.throttles import VideoStreamRateThrottle
-from .models import Movie, MovieProgress, Category
+from .models import Movie, Category
 from .serializers import MovieSerializer, MovieProgressSerializer, MovieFileSerializer
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -21,14 +17,28 @@ from django.db.models import Max, Q
 
 class HomeMoviesAPIView(APIView):
     """
-    Liefert für jede Sektion paginierte Ergebnisse mit 'results' und 'next'.
-    Query-Parameter: page_size (optional, default=5)
+    Aggregate multiple paginated movie lists for the home screen.
+    Supports query parameter:
+      - page_size: number of items per section (default: 5)
+    Returns JSON:
+      {
+        newest: { results: [...], next: <url> },
+        recently_watched: { results: [...], next: <url> },
+        finished: { results: [...], next: <url> },
+        categories: [ { category, category_id, results: [...], next }, ... ]
+      }
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        """
+        Handle GET: paginate each section in turn:
+          1) newest by created_at,
+          2) recently watched by latest progress,
+          3) finished by latest progress,
+          4) each category by created_at.
+        """
         user = request.user
-        # 1) page_size extrahieren
         try:
             page_size = int(request.query_params.get('page_size', 5))
         except ValueError:
@@ -40,13 +50,11 @@ class HomeMoviesAPIView(APIView):
         paginator = StandardMoviePagination()
         paginator.page_size = page_size
 
-        # 2) Newest
         newest_qs = Movie.objects.order_by('-created_at')
         newest_page = paginator.paginate_queryset(newest_qs, request, view=self)
         newest_data = MovieSerializer(newest_page, many=True, context={'request': request}).data
         newest_next = paginator.get_next_link()
 
-        # 3) Recently Watched (nach progress.updated_at sortiert)
         recent_qs = (
             Movie.objects
                  .filter(progress_entries__user=user, progress_entries__finished=False)
@@ -63,7 +71,6 @@ class HomeMoviesAPIView(APIView):
         recent_data = MovieSerializer(recent_page, many=True, context={'request': request}).data
         recent_next = paginator.get_next_link()
 
-        # 4) Finished (nach progress.updated_at sortiert)
         finished_qs = (
             Movie.objects
                  .filter(progress_entries__user=user, progress_entries__finished=True)
@@ -79,7 +86,6 @@ class HomeMoviesAPIView(APIView):
         finished_data = MovieSerializer(finished_page, many=True, context={'request': request}).data
         finished_next = paginator.get_next_link()
 
-        # 5) Categories (je nach category_id paginiert)
         category_data = []
         for category in Category.objects.all():
             cat_qs = Movie.objects.filter(categories=category).order_by('-created_at')
@@ -100,12 +106,22 @@ class HomeMoviesAPIView(APIView):
             "categories": category_data
         })
 
+
 class MovieDetailAPIView(generics.RetrieveAPIView):
+    """
+    Retrieve metadata and streaming URLs for a single movie.
+    Returns video file fields plus user-specific progress/done flags.
+    """
     queryset = Movie.objects.all()
     serializer_class = MovieFileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+
 class MovieStreamView(APIView):
+    """
+    Stream the MP4 file at the requested resolution using HTTP Range support.
+    URL kwargs: pk (movie ID), resolution (e.g. '360').
+    """
     def get(self, request, pk, *args, **kwargs):
         movie = get_object_or_404(Movie, pk=pk)
         res = request.query_params.get("resolution", "360")
@@ -115,8 +131,16 @@ class MovieStreamView(APIView):
         return RangeFileResponse(request, field.path, content_type="video/mp4")
 
 class UpdateProgressAPIView(APIView):
+    """
+    Endpoint to record the user's playback progress.
+    Expects JSON: { movie_id, progressInSeconds, finished }.
+    """
     permission_classes = [permissions.IsAuthenticated]
     def post(self, request):
+        """
+        Validate and save MovieProgress via serializer.
+        Returns 200 on success or 400 with errors.
+        """
         serializer = MovieProgressSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
@@ -127,17 +151,24 @@ class UpdateProgressAPIView(APIView):
 
 class LoadMoreMoviesAPIView(ListAPIView):
     """
-    Unified endpoint to load more movies for different sections:
-    - section=newest
-    - section=recently_watched
-    - section=finished
-    - section=category (requires category_id)
+    Unified 'load more' endpoint for infinite scroll.
+    Query params:
+      - section: 'newest', 'recently_watched', 'finished', or 'category'
+      - category_id: required if section=='category'
+      - page, page_size: standard pagination
     """
     serializer_class = MovieSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = StandardMoviePagination
 
     def get_queryset(self):
+        """
+        Choose the base queryset based on 'section' param:
+          - newest: all movies by created_at,
+          - recently_watched: filter by this user's progress entries,
+          - finished: only those marked finished,
+          - category: movies in given category.
+        """
         user = self.request.user
         params = self.request.query_params
         section = params.get('section')
@@ -183,24 +214,3 @@ class LoadMoreMoviesAPIView(ListAPIView):
         # Fallback: leeres QuerySet
         return Movie.objects.none()
     
-
-class ServeVideoView(APIView):
-    permission_classes = [IsAuthenticated]
-    throttle_classes = [VideoStreamRateThrottle]
-
-    def get(self, request, pk, resolution):
-        try:
-            movie = Movie.objects.get(id=pk)
-        except Movie.DoesNotExist:
-            return Response({"detail": "Movie not found."}, status=404)
-
-        video_field = getattr(movie, f"video_{resolution}p", None)
-
-        if not video_field or not video_field.name:
-            return Response({"detail": f"{resolution}p version not available."}, status=404)
-
-        video_path = video_field.path
-        if not os.path.exists(video_path):
-            return Response({"detail": "Video file not found."}, status=404)
-
-        return FileResponse(open(video_path, 'rb'), content_type='video/mp4')

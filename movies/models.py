@@ -2,6 +2,10 @@ from django.db import models
 from django.conf import settings
 
 class Category(models.Model):
+    """
+    Represents a movie category (e.g., Action, Comedy).
+    name: Unique category name used for grouping movies.
+    """
     name = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
@@ -9,6 +13,18 @@ class Category(models.Model):
 
 
 class Movie(models.Model):
+    """
+    Stores metadata and file references for a movie.
+    - title, description: text fields for display.
+    - categories: allows tagging a movie into multiple categories.
+    - thumbnail: optional image, auto-generated if not provided.
+    - created_at: timestamp when the record was created.
+    - duration: auto-filled video length in seconds.
+    - conversion_started: flag to prevent duplicate conversion jobs.
+    - video_file: original upload, auto-converted into multiple resolutions.
+    - video_120p...video_1080p: derived files for adaptive streaming.
+    - trailer: optional short clip, auto-generated if omitted.
+    """
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     categories = models.ManyToManyField(Category, related_name="movies")
@@ -26,6 +42,13 @@ class Movie(models.Model):
         return self.title
 
 class MovieProgress(models.Model):
+    """
+    Tracks per-user viewing progress for each movie.
+    - progressInSeconds: last watched position.
+    - finished: whether the user has completed the movie.
+    - updated_at: auto-updated timestamp of last progress update.
+    Enforced unique(user, movie) per user-movie pair.
+    """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="movie_progress")
     movie = models.ForeignKey("Movie", on_delete=models.CASCADE, related_name="progress_entries")
     progressInSeconds = models.PositiveIntegerField(null=True, blank=True)

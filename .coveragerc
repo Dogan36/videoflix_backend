@@ -1,0 +1,6 @@
+[run]
+
+source = movies, users
+omit =
+    */tests/*
+    */migrations/*

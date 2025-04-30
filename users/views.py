@@ -1,3 +1,9 @@
+"""
+users/views.py
+
+API endpoints for user registration, activation, login, and password management.
+"""
+
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.urls import reverse
@@ -15,20 +21,28 @@ from django.utils.encoding import force_str
 
 
 class RegisterView(APIView):
+    """
+    POST /users/register/
+    Creates a new user and sends an activation email.
+    Returns a generic success or failure message for security.
+    """
     def post(self, request):
+        """
+        Validate incoming data with RegisterSerializer.
+        On success: save user, send activation email, return 201.
+        On failure: return 400 with a generic error detail.
+        """
         serializer = RegisterSerializer(data=request.data)
 
         if serializer.is_valid():
             user = serializer.save()
 
-            # ... E-Mail versenden, Response wie gehabt ...
             send_activation_email(user)
             return Response(
                 {"detail": "Please check your email to verify your account."},
                 status=status.HTTP_201_CREATED,
             )
 
-        # Immer nur eine allgemeine Fehlermeldung
         return Response(
             {"detail": "Registration failed. Please check your input."},
             status=status.HTTP_400_BAD_REQUEST,
@@ -36,7 +50,16 @@ class RegisterView(APIView):
 
 
 class ActivateAccountView(APIView):
+    """
+    GET /users/activate/<uid>/<token>/
+    Verifies the activation token and activates the user account.
+    """
     def get(self, request, uid, token):
+        """
+        Decode UID, fetch user, check token.
+        On success: mark user active.
+        On failure: return 400 with generic error detail.
+        """
         try:
             uid_decoded = urlsafe_base64_decode(uid).decode()
             user = User.objects.get(pk=uid_decoded)
@@ -52,7 +75,17 @@ class ActivateAccountView(APIView):
 
 
 class LoginView(APIView):
+    """
+    POST /users/login/
+    Authenticates a user and returns an auth token.
+    """
     def post(self, request):
+        """
+        Validate credentials via LoginSerializer.
+        Check is_active flag.
+        On success: return token and user info.
+        On failure: return 400 or 401 with generic detail.
+        """
         serializer = LoginSerializer(data=request.data, context={"request": request})
         if serializer.is_valid():
             user = serializer.validated_data["user"]
@@ -74,7 +107,17 @@ class LoginView(APIView):
 
 
 class ResendActivationView(APIView):
+    """
+    POST /users/resend-activation/
+    Resends the account activation email if the user exists and is inactive.
+    Always returns 200 with a generic message.
+    """
     def post(self, request):
+        """
+        Extract email, attempt lookup.
+        If found & inactive: send activation email.
+        Otherwise: no-op for security.
+        """
         email = request.data.get("email")
         if not email:
             return Response({"detail": "Email is required."}, status=400)
@@ -107,6 +150,11 @@ class CheckEmailExistsAPIView(APIView):
 
 
 class RequestPasswordResetView(APIView):
+    """
+    POST /users/password-reset/
+    Initiates password reset by sending an email if the account exists.
+    Always responds with 200 and a generic detail.
+    """
     def post(self, request):
         email = request.data.get("email")
         if email:
@@ -125,16 +173,28 @@ class RequestPasswordResetView(APIView):
 
 
 def decode_uid(uidb64):
-    # 1) Base64 → bytes
+    """
+    Helper to decode URL-safe base64 UID into integer PK.
+    """
     uid_bytes = urlsafe_base64_decode(uidb64)
-    # 2) bytes → str
     uid_str = force_str(uid_bytes)
-    # 3) str → int (Primary Key)
     return int(uid_str)
 
 
 class ResetPasswordConfirmView(APIView):
+    """
+    POST /users/password-reset-confirm/<uid>/<token>/
+    Validates new password and token, updates the user's password.
+    Returns generic success or failure messages.
+    """
     def post(self, request, uid, token):
+        """
+        1) Verify that passwords match.
+        2) Decode UID and fetch user.
+        3) Check token validity.
+        4) Set new password and save.
+        5) Return 200 on success or 400 on failure.
+        """
         password  = request.data.get("password")
         password2 = request.data.get("password2")
 
