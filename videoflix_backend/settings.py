@@ -82,7 +82,10 @@ INTERNAL_IPS = [
     '127.0.0.1',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True  # nur für Entwicklung!
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # für lokales Frontend
+    "https://your-frontend.com"  # später für Live
+]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
