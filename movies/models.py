@@ -12,16 +12,16 @@ class Movie(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     categories = models.ManyToManyField(Category, related_name="movies")
-    thumbnail = models.ImageField(upload_to='thumbnails/', blank=True, null=True)
+    thumbnail = models.ImageField(upload_to='thumbnails/', blank=True, null=True, help_text="Optional. Wenn du keinen Thumbnail hochlädst, wird automatisch einer erzeugt.")
     created_at = models.DateTimeField(auto_now_add=True)
     duration = models.PositiveIntegerField(help_text="Video duration in seconds", editable=False, null=True, blank=True)
     conversion_started = models.BooleanField(default=False)
-    video_file = models.FileField(upload_to='videos/', blank=True, null=True)
+    video_file = models.FileField(upload_to='videos/', blank=True, null=True, help_text="Das Original-Video wird automatisch in verschiedene Auflösungen konvertiert und anschließend gelöscht.")
     video_120p = models.FileField(null=True, blank=True)
     video_360p = models.FileField(null=True, blank=True)
     video_720p = models.FileField(null=True, blank=True)
     video_1080p = models.FileField(null=True, blank=True)
-    trailer = models.FileField(upload_to='trailers/', blank=True, null=True)
+    trailer = models.FileField(upload_to='trailers/', blank=True, null=True, help_text="Optional. Wenn du keinen Trailer hochlädst, wird automatisch einer erzeugt.")
     def __str__(self):
         return self.title
 

@@ -18,6 +18,7 @@ from django.shortcuts import get_object_or_404
 from movies.utils.streaming import RangeFileResponse
 from .pagination import StandardMoviePagination
 from django.db.models import Max, Q
+
 class HomeMoviesAPIView(APIView):
     """
     Liefert für jede Sektion paginierte Ergebnisse mit 'results' und 'next'.
@@ -115,7 +116,6 @@ class MovieStreamView(APIView):
 
 class UpdateProgressAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    print(request)
     def post(self, request):
         serializer = MovieProgressSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
@@ -146,21 +146,35 @@ class LoadMoreMoviesAPIView(ListAPIView):
             return Movie.objects.order_by('-created_at')
 
         if section == 'recently_watched':
-            ids = (
-                MovieProgress.objects
-                    .filter(user=user)
-                    .values_list('movie_id', flat=True)
-                    .distinct()
+            # Annotate each Movie with the latest updated_at from this user's progress entries
+            return (
+                Movie.objects
+                     .filter(progress_entries__user=user)
+                     .annotate(
+                         last_progress=Max(
+                             'progress_entries__updated_at',
+                             filter=Q(progress_entries__user=user)
+                         )
+                     )
+                     .order_by('-last_progress')
             )
-            return Movie.objects.filter(id__in=ids).order_by('-updated_at')
 
         if section == 'finished':
-            ids = (
-                MovieProgress.objects
-                    .filter(user=user, finished=True)
-                    .values_list('movie_id', flat=True)
+            # Only those the user has marked finished, likewise ordered by latest update
+            return (
+                Movie.objects
+                     .filter(progress_entries__user=user, progress_entries__finished=True)
+                     .annotate(
+                         last_progress=Max(
+                             'progress_entries__updated_at',
+                             filter=Q(
+                                 progress_entries__user=user,
+                                 progress_entries__finished=True
+                             )
+                         )
+                     )
+                     .order_by('-last_progress')
             )
-            return Movie.objects.filter(id__in=ids).order_by('-updated_at')
 
         if section == 'category':
             category_id = params.get('category_id')
