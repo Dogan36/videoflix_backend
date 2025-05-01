@@ -143,7 +143,8 @@ WSGI_APPLICATION = 'videoflix_backend.wsgi.application'
 
 USE_POSTGRES = os.getenv("USE_POSTGRES", "False").lower() == "true"
 
-if USE_POSTGRES:
+if not USE_POSTGRES:
+    print("Using SQLite database")
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -151,6 +152,7 @@ if USE_POSTGRES:
         }
     }
 else:
+    print("Using PostgreSQL database")
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
