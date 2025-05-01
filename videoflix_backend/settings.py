@@ -18,16 +18,13 @@ load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-Debug = os.getenv("DEBUG", "False").lower() == "true"
+DEBUG  = os.getenv("DEBUG", "False").lower() == "true"
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-s!4u(f&th2m)w1+m#r4rp99vew8ue)n^2f!2sof4&y2z7j#%!7'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
@@ -117,7 +114,6 @@ RQ_QUEUES = {
         'HOST': 'localhost',
         'PORT': 6379,
         'DB': 0,
-        
         'DEFAULT_TIMEOUT': 360,
     },
 }
@@ -145,7 +141,9 @@ WSGI_APPLICATION = 'videoflix_backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-if not Debug:
+USE_POSTGRES = os.getenv("USE_POSTGRES", "False").lower() == "true"
+
+if USE_POSTGRES:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
