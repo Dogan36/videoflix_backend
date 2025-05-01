@@ -11,12 +11,14 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
-
+from dotenv import load_dotenv
 import os
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+Debug = os.getenv("DEBUG", "False").lower() == "true"
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -82,10 +84,12 @@ INTERNAL_IPS = [
     '127.0.0.1',
 ]
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # für lokales Frontend
-    "https://your-frontend.com"  # später für Live
-]
+CORS_ALLOW_ALL_ORIGINS = True  # für Entwicklung, später auf False setzen
+
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:5173",  # für lokales Frontend
+#     "https://your-frontend.com"  # später für Live
+# ]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -113,7 +117,7 @@ RQ_QUEUES = {
         'HOST': 'localhost',
         'PORT': 6379,
         'DB': 0,
-        'PASSWORD': 'foobared',
+        
         'DEFAULT_TIMEOUT': 360,
     },
 }
@@ -141,12 +145,24 @@ WSGI_APPLICATION = 'videoflix_backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if not Debug:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv("POSTGRES_DB"),
+            'USER': os.getenv("POSTGRES_USER"),
+            'PASSWORD': os.getenv("POSTGRES_PASSWORD"),
+            'HOST': os.getenv("POSTGRES_HOST", "localhost"),
+            'PORT': os.getenv("POSTGRES_PORT", "5432"),
+        }
+    }
 
 AUTH_USER_MODEL = 'users.CustomUser'
 

@@ -38,7 +38,9 @@ def save_thumbnail(movie_id, source_path):
 
     generate_thumbnail(source_path, thumb_path)
 
-    setattr(movie, "thumbnail", thumb_path)
+    relative_thumb_path = os.path.relpath(thumb_path, settings.MEDIA_ROOT)
+    setattr(movie, "thumbnail", relative_thumb_path)
+    print(f"Thumbnail saved at: {relative_thumb_path}")
     movie.save(update_fields=["thumbnail"])
 
 
@@ -54,7 +56,9 @@ def save_trailer(movie_id, source_path):
 
     cut_video_for_trailer(source_path, trailer_path)
 
-    setattr(movie, "trailer", trailer_path)
+    relative_trailer_path = os.path.relpath(trailer_path, settings.MEDIA_ROOT)
+    setattr(movie, "trailer", relative_trailer_path)
+    print(f"Trailer saved at: {relative_trailer_path}")
     movie.save(update_fields=["trailer"])
 
 

@@ -13,6 +13,21 @@
 - **Pagination & Filtering**: Home endpoints and "load more" APIs support page sizes based on client needs.
 - **Comprehensive Testing**: Unit tests for models, serializers, views, tasks, signals, and utilities (achieving over 80% coverage recommended).
 
+## System Requirements
+
+Make sure the following tools are installed on your system:
+
+- **Python 3.12+**
+- **Redis** (for background tasks using RQ)
+- **FFmpeg** (for video conversion, thumbnails, and trailers)
+
+To install Redis and FFmpeg on Ubuntu-based systems (including WSL):
+
+```bash
+sudo apt update
+sudo apt install redis-server ffmpeg
+```
+
 ## Directory Structure
 
 ```
