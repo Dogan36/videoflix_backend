@@ -1,4 +1,4 @@
-#  Handles enqueuing post-upload video processing jobs and cleaning up files on delete.
+	#  Handles enqueuing post-upload video processing jobs and cleaning up files on delete.
 from movies.tasks import save_converted_resolution, save_thumbnail, save_trailer, save_video_duration, finalize_conversion
 from .models import Movie
 from movies.utils.wait import wait_until_file_is_ready
@@ -23,14 +23,13 @@ def video_post_save(sender, instance, created, **kwargs):
         if wait_until_file_is_ready(path, check_interval=3, required_stable_checks=2, max_wait=1800):
             queue = django_rq.get_queue('default')
             movie_id = instance.id
-         
+            thumbnail_job = queue.enqueue(save_thumbnail, movie_id, path) 
             resolutions = [120, 360, 720, 1080]
             conversion_jobs = [
                 queue.enqueue(save_converted_resolution, path, movie_id, res)
                 for res in resolutions
             ]
 
-            thumbnail_job = queue.enqueue(save_thumbnail, movie_id, path)
             trailer_job = queue.enqueue(save_trailer, movie_id, path)
             duration_job = queue.enqueue(save_video_duration, movie_id, path)
 

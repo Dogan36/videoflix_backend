@@ -24,7 +24,7 @@ def convert_video_to_resolution(source_path, resolution):
         target_path
     ]
 
-    subprocess.run(command, check=True)
+    subprocess.run(command, stdin=subprocess.DEVNULL, check=True)
     return target_path
 
 def generate_thumbnail(video_path, output_path, time='00:00:05'):
@@ -37,7 +37,7 @@ def generate_thumbnail(video_path, output_path, time='00:00:05'):
         output_path
     ]
 
-    subprocess.run(command, check=True)
+    subprocess.run(command, stdin=subprocess.DEVNULL, check=True)
     return output_path
 
 def get_video_duration(video_path):
@@ -49,7 +49,7 @@ def get_video_duration(video_path):
         video_path
     ]
 
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    result = subprocess.run(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     duration = float(result.stdout.strip())
     return duration
 
@@ -64,6 +64,6 @@ def cut_video_for_trailer(video_path, output_path, duration=7):
         output_path
     ]
 
-    subprocess.run(command, check=True)
+    subprocess.run(command, stdin=subprocess.DEVNULL, check=True)
     return output_path
 
