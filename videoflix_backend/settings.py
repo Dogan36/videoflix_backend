@@ -26,7 +26,7 @@ DEBUG  = os.getenv("DEBUG", "False").lower() == "true"
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("SECRET_KEY")
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '34.88.150.134', 'videoflix-api.dogan-celik.com']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '34.88.178.141', 'videoflix-api.dogan-celik.com']
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -81,7 +81,7 @@ INTERNAL_IPS = [
     '127.0.0.1',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True  # für Entwicklung, später auf False setzen
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 # CORS_ALLOWED_ORIGINS = [
 #     "http://localhost:5173",  # für lokales Frontend
