@@ -25,7 +25,7 @@ from django.views import View
 
 class WelcomeView(View):
     def get(self, request):
-        return JsonResponse({"message": "🎬 Welcome to Videoflix!"})
+        return JsonResponse({"message": "Welcome to Videoflix!"})
 urlpatterns = [
     path('', WelcomeView.as_view(), name="welcome"),
     path('admin/', admin.site.urls),
