@@ -2,6 +2,10 @@
 
 **Videoflix Backend** is the server-side component of the Videoflix full‑stack streaming application, developed as part of the Full‑Stack training at Developer Academy. It provides RESTful APIs for movies, user authentication, streaming, progress tracking, and asynchronous video processing tasks.
 
+## Frontend Repository
+
+You can find the frontend repository for this project at https://github.com/Dogan36/videoflix-frontend.git
+
 ## Features
 
 - **User Management**: Registration, email verification, login (Token authentication), password reset.
@@ -45,7 +49,7 @@ backend/
 
 1. **Clone the repo:**
    ```bash
-   git clone https://github.com/your-org/videoflix-backend.git
+   git clone https://github.com/Dogan36/videoflix-backend.git
    cd videoflix-backend
    ```
 2. **Create a virtual environment & install dependencies:**
@@ -55,9 +59,11 @@ backend/
    pip install -r requirements.txt
    ```
 3. **Configure environment variables** in `.env` (e.g. SECRET_KEY, DATABASE_URL, FRONTEND_URL).
+
 4. **Run migrations:**
    ```bash
    python manage.py migrate
+   python manage.py collectstatic
    ```
 5. **Start RQ worker:**
    ```bash

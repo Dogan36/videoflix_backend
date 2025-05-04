@@ -25,7 +25,7 @@ DEBUG  = os.getenv("DEBUG", "False").lower() == "true"
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("SECRET_KEY")
-
+SENDMAIL = os.getenv("SENDMAIL", "False").lower() == "true"
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '34.88.178.141', 'videoflix-api.dogan-celik.com']
 
 MEDIA_URL = '/media/'
@@ -144,7 +144,6 @@ WSGI_APPLICATION = 'videoflix_backend.wsgi.application'
 USE_POSTGRES = os.getenv("USE_POSTGRES", "False").lower() == "true"
 
 if not USE_POSTGRES:
-    print("Using SQLite database")
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -152,7 +151,6 @@ if not USE_POSTGRES:
         }
     }
 else:
-    print("Using PostgreSQL database")
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -208,7 +206,8 @@ STATIC_ROOT = BASE_DIR / 'static'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 FRONTEND_URL = "http://localhost:5173" if DEBUG else "https://videoflix.dogan-celik.com"
-if DEBUG:
+
+if not SENDMAIL:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 else:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

@@ -14,7 +14,7 @@ def send_activation_email(user):
     subject = "Activate your Videoflix account"
 
     # HTML + Fallback Text
-    context = {"user": user, "activation_url": activation_url, "logo_url": f"{settings.FRONTEND_URL}/logo.png"}
+    context = {"user": user, "activation_url": activation_url, "logo_url": "https://videoflix.dogan-celik.com/logo_full.svg"}
     html_content = render_to_string("activation_email.html", context)
     text_content = f"Hi {user.email},\nActivate here: {activation_url}"
 
@@ -33,7 +33,7 @@ def send_password_reset_email(user):
     context = {
         "user": user,
         "reset_url": reset_url,
-        "logo_url": f"{settings.FRONTEND_URL}/logo.png",
+        "logo_url": "https://videoflix.dogan-celik.com/logo_full.svg",
     }
 
     # 5. HTML‑Versions und Plain‑Text‑Fallback rendern
