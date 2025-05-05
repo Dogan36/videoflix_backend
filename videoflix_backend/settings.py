@@ -25,7 +25,7 @@ DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("SECRET_KEY")
 SENDMAIL = os.getenv("SENDMAIL", "False").lower() == "true"
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '34.88.178.141', 'videoflix-api.dogan-celik.com']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '34.88.178.141', 'videoflix-api.dogan-celik.com', 'videoflix.dogan-celik.com']
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
