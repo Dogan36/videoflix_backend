@@ -80,12 +80,11 @@ INTERNAL_IPS = [
     '127.0.0.1',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = DEBUG
 
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:5173",  # für lokales Frontend
-#     "https://your-frontend.com"  # später für Live
-# ]
+
+CORS_ALLOWED_ORIGINS = [
+     'http://localhost', 'http://127.0.0.1', 'http://34.88.178.141', 'https://videoflix-api.dogan-celik.com', 'https://videoflix.dogan-celik.com'
+]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
