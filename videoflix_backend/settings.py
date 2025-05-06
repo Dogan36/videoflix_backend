@@ -18,14 +18,35 @@ load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("SECRET_KEY")
-SENDMAIL = os.getenv("SEND_MAIL", "False").lower() == "true"
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '34.88.178.141', 'videoflix-api.dogan-celik.com', 'videoflix.dogan-celik.com']
+FRONTEND_URL = "http://localhost:5173" if DEBUG else "https://videoflix.dogan-celik.com"
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+
+if ENVIRONMENT == "development":
+    ALLOWED_HOSTS = ['*']
+else:
+    ALLOWED_HOSTS = [
+        '34.88.178.141',
+        'videoflix-api.dogan-celik.com',
+        'videoflix.dogan-celik.com',
+    ]
+
+
+if ENVIRONMENT == "development":
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    # In Production nur bestimmte Domains erlauben
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = [
+        'http://34.88.178.141',
+        'https://videoflix-api.dogan-celik.com',
+        'https://videoflix.dogan-celik.com',
+    ]
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -80,19 +101,6 @@ INTERNAL_IPS = [
     '127.0.0.1',
 ]
 
-CORS_OPEN = os.environ.get('CORS_OPEN', 'False') == 'True'
-
-if CORS_OPEN:
-    # Im Development alles erlauben
-    CORS_ALLOW_ALL_ORIGINS = True
-else:
-    # In Production nur bestimmte Domains erlauben
-    CORS_ALLOW_ALL_ORIGINS = False
-    CORS_ALLOWED_ORIGINS = [
-        'http://34.88.178.141',
-        'https://videoflix-api.dogan-celik.com',
-        'https://videoflix.dogan-celik.com',
-    ]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -211,7 +219,7 @@ STATIC_ROOT = BASE_DIR / 'static'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-FRONTEND_URL = "http://localhost:5173" if DEBUG else "https://videoflix.dogan-celik.com"
+SENDMAIL = os.getenv("SEND_MAIL", "False").lower() == "true"
 
 if not SENDMAIL:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
