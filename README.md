@@ -58,7 +58,17 @@ backend/
    source env/bin/activate   # on Windows: env\Scripts\activate
    pip install -r requirements.txt
    ```
-3. **Configure environment variables** in `.env` (e.g. SECRET_KEY, DATABASE_URL, FRONTEND_URL).
+3. **Configure environment variables**  
+   
+   - Copy the `.env.example` file to a new file named `.env`:  
+     ```
+     cp .env.example .env
+     ```
+
+   - Open the `.env` file and fill in the required values (e.g. `SECRET_KEY`, database settings, email settings, etc.).
+
+   > ⚠ **Important:** Never commit your `.env` file to version control.  
+   Only `.env.example` should be kept in the repository to document which variables are needed.
 
 4. **Run migrations:**
    ```bash
