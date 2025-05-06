@@ -24,7 +24,7 @@ DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("SECRET_KEY")
-SENDMAIL = os.getenv("SENDMAIL", "False").lower() == "true"
+SENDMAIL = os.getenv("SEND_MAIL", "False").lower() == "true"
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '34.88.178.141', 'videoflix-api.dogan-celik.com', 'videoflix.dogan-celik.com']
 
 MEDIA_URL = '/media/'
@@ -106,7 +106,7 @@ REST_FRAMEWORK = {
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'rediss://127.0.0.1:6379/1',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             #'PASSWORD': 'your_redis_password',  # If your Redis server requires authentication
@@ -222,4 +222,4 @@ else:
     EMAIL_USE_TLS = True
     EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
     EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-    DEFAULT_FROM_EMAIL = 'noreply@videoflix.dogan-celik.com'
+    DEFAULT_FROM_EMAIL = 'dogancelik86@gmail.com'
