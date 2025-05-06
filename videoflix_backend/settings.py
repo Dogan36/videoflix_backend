@@ -222,4 +222,4 @@ else:
     EMAIL_USE_TLS = True
     EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
     EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-    DEFAULT_FROM_EMAIL = 'dogancelik86@gmail.com'
+    DEFAULT_FROM_EMAIL = 'Videoflix <noreply@videoflix.dogan-celik.com>'
