@@ -122,7 +122,7 @@ class MovieStreamView(APIView):
     URL kwargs: pk (movie ID), resolution (e.g. '360').
     """
     throttle_classes = [VideoStreamRateThrottle]
-    permission_classes = [permissions.IsAuthenticated]
+   
     def get(self, request, pk, *args, **kwargs):
         movie = get_object_or_404(Movie, pk=pk)
         res = request.query_params.get("resolution", "360")
