@@ -38,15 +38,12 @@ class SignalTests(TestCase):
         fake_queue = mock.Mock()
         mock_get_queue.return_value = fake_queue
 
-        # Trigger post_save
         self.movie.conversion_started = False
         self.movie.save(update_fields=['conversion_started'])
 
-        # Flag set
         m = Movie.objects.get(pk=self.movie.pk)
         self.assertTrue(m.conversion_started)
 
-        # Check conversion tasks
         expected_calls = [
             mock.call(save_converted_resolution, mock.ANY, self.movie.pk, res)
             for res in [120, 360, 720, 1080]
@@ -57,7 +54,6 @@ class SignalTests(TestCase):
         ]
         fake_queue.enqueue.assert_has_calls(expected_calls, any_order=True)
 
-        # Finalize job enqueued once
         finalize_calls = [c for c in fake_queue.enqueue.call_args_list if c[0][0] == finalize_conversion]
         self.assertEqual(len(finalize_calls), 1)
 
@@ -68,15 +64,12 @@ class SignalTests(TestCase):
             setattr(self.movie, field, test_file)
         self.movie.save()
 
-        # Collect paths
         paths = []
         for field in ['video_file', 'thumbnail', 'trailer', 'video_120p', 'video_360p', 'video_720p', 'video_1080p']:
             file_field = getattr(self.movie, field)
             paths.append(os.path.join(settings.MEDIA_ROOT, file_field.name))
 
-        # Delete instance
         self.movie.delete()
 
-        # Assert removal
         for path in paths:
             self.assertFalse(os.path.exists(path), f"File {path} should be deleted")

@@ -13,18 +13,15 @@ from movies.utils.video import (
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
 class VideoUtilsTests(SimpleTestCase):
     def setUp(self):
-        # Erstelle eine kleine Dummy-Quelldatei
         fd, self.source_path = tempfile.mkstemp(suffix=".mp4")
         os.close(fd)
         with open(self.source_path, "wb") as f:
             f.write(b"DATA")
-        # Backup original subprocess.run
         import movies.utils.video as video_mod
         self._orig_run = video_mod.subprocess.run
         self.video_mod = video_mod
 
     def tearDown(self):
-        # Restore und Aufräumen
         self.video_mod.subprocess.run = self._orig_run
         root = self._get_media_root()
         if os.path.isdir(root):
@@ -36,7 +33,6 @@ class VideoUtilsTests(SimpleTestCase):
         return settings.MEDIA_ROOT
 
     def test_convert_video_to_resolution_creates_file(self):
-        # Fake ffmpeg: erzeugt das Ziel selbst
         def fake_run(cmd, **kwargs):
             target = cmd[-1]
             open(target, "wb").close()
@@ -51,9 +47,7 @@ class VideoUtilsTests(SimpleTestCase):
             target = cmd[-1]
             os.makedirs(os.path.dirname(target), exist_ok=True)
             open(target, "wb").close()
-
         self.video_mod.subprocess.run = fake_run
-
         out = os.path.join(self._get_media_root(), "thumb.webp")
         result = generate_thumbnail(self.source_path, out)
         self.assertEqual(result, out)
@@ -72,9 +66,7 @@ class VideoUtilsTests(SimpleTestCase):
     def test_cut_video_for_trailer_creates_file(self):
         def fake_run(cmd, **kwargs):
             target = cmd[-1]
-            # erst das Verzeichnis anlegen
             os.makedirs(os.path.dirname(target), exist_ok=True)
-            # dann die Datei „simulieren“
             open(target, "wb").close()
         self.video_mod.subprocess.run = fake_run
 

@@ -10,31 +10,41 @@ User = get_user_model()
 
 class MovieSerializerTest(TestCase):
     def setUp(self):
-        # Benutzer für Request-Kontext
         self.user = User.objects.create_user(email='u@example.com', password='pass')
-        factory = APIRequestFactory()
-        self.request = factory.get('/')
-        self.request.user = self.user
+        self.request = self._create_request(self.user)
 
-        # Kategorien erstellen
-        self.cat1 = Category.objects.create(name="Action")
-        self.cat2 = Category.objects.create(name="Comedy")
-        # Movie erstellen
-        self.movie = Movie.objects.create(
+        self.cat1, self.cat2 = self._create_test_categories()
+        self.movie = self._create_test_movie()
+
+    def _create_request(self, user):
+        factory = APIRequestFactory()
+        request = factory.get('/')
+        request.user = user
+        return request
+
+    def _create_test_categories(self):
+        cat1 = Category.objects.create(name="Action")
+        cat2 = Category.objects.create(name="Comedy")
+        return cat1, cat2
+
+    def _create_test_movie(self):
+        movie = Movie.objects.create(
             title="Test Movie",
             description="A movie for testing.",
             duration=123,
         )
-        self.movie.categories.add(self.cat1, self.cat2)
-        # Thumbnail und Trailer simulieren
-        thumb = SimpleUploadedFile(
-            name="thumb.jpg", content=b"thumbcontent", content_type="image/jpeg"
-        )
-        trailer = SimpleUploadedFile(
-            name="trailer.mp4", content=b"videocontent", content_type="video/mp4"
-        )
-        self.movie.thumbnail.save("thumb.jpg", thumb, save=True)
-        self.movie.trailer.save("trailer.mp4", trailer, save=True)
+        movie.categories.add(self.cat1, self.cat2)
+        self._attach_files_to_movie(movie)
+        return movie
+
+    def _attach_files_to_movie(self, movie):
+        thumb = self._create_uploaded_file("thumb.jpg", b"thumbcontent", "image/jpeg")
+        trailer = self._create_uploaded_file("trailer.mp4", b"videocontent", "video/mp4")
+        movie.thumbnail.save("thumb.jpg", thumb, save=True)
+        movie.trailer.save("trailer.mp4", trailer, save=True)
+
+    def _create_uploaded_file(self, name, content, content_type):
+        return SimpleUploadedFile(name=name, content=content, content_type=content_type)
 
     def test_serialized_fields_exist(self):
         serializer = MovieSerializer(self.movie, context={'request': self.request})

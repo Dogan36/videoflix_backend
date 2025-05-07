@@ -10,23 +10,18 @@ User = get_user_model()
 
 class MovieSerializerTest(TestCase):
     def setUp(self):
-        # Benutzer für Request-Kontext
         self.user = User.objects.create_user(email='u@example.com', password='pass')
         factory = APIRequestFactory()
         self.request = factory.get('/')
         self.request.user = self.user
-
-        # Kategorien erstellen
         self.cat1 = Category.objects.create(name="Action")
         self.cat2 = Category.objects.create(name="Comedy")
-        # Movie erstellen
         self.movie = Movie.objects.create(
             title="Test Movie",
             description="A movie for testing.",
             duration=123,
         )
         self.movie.categories.add(self.cat1, self.cat2)
-        # Thumbnail und Trailer simulieren
         thumb = SimpleUploadedFile(
             name="thumb.jpg", content=b"thumbcontent", content_type="image/jpeg"
         )

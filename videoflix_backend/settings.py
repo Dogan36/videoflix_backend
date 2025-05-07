@@ -105,10 +105,16 @@ INTERNAL_IPS = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
-      
-        
     ],
-    # ggf. weitere REST-Framework-Einstellungen
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.AnonRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '500/day',
+        'anon': '100/day', 
+        'video_stream': '30/minute',
+    }
 }
 
 CACHES = {

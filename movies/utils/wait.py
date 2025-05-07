@@ -2,10 +2,15 @@ import os
 import time
 
 def wait_until_file_is_ready(path, check_interval=3, required_stable_checks=2, max_wait=1800):
+    """
+    Waits until a file appears and remains stable in size for a certain number of checks.
+    This helps ensure that the file is fully written before further processing.
+    Periodically checks the file size until it stays unchanged for the required number of checks
+    or until the maximum wait time is reached.
+    """
     last_size = -1
     stable_count = 0
     waited = 0
-
     while waited < max_wait:
         if os.path.exists(path):
             current_size = os.path.getsize(path)

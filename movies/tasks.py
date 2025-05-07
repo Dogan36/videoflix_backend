@@ -6,6 +6,10 @@ from django.core.files import File
 
 
 def save_converted_resolution(source_path, movie_id, resolution):
+    """
+    Converts a video to the specified resolution and saves the path
+    in the corresponding field of the Movie model.
+    """
     target_path = convert_video_to_resolution(source_path, resolution)
     relative_path = os.path.relpath(target_path, settings.MEDIA_ROOT)
 
@@ -27,6 +31,10 @@ def save_converted_resolution(source_path, movie_id, resolution):
 
 
 def save_thumbnail(movie_id, source_path):
+    """
+    Generates a thumbnail from the video and saves the path
+    in the Movie model's thumbnail field.
+    """
     try:
         movie = Movie.objects.get(id=movie_id)
     except Movie.DoesNotExist:
@@ -45,6 +53,10 @@ def save_thumbnail(movie_id, source_path):
 
 
 def save_trailer(movie_id, source_path):
+    """
+    Cuts a short trailer from the video and saves the path
+    in the Movie model's trailer field.
+    """
     try:
         movie = Movie.objects.get(id=movie_id)
     except Movie.DoesNotExist:
@@ -62,19 +74,26 @@ def save_trailer(movie_id, source_path):
     movie.save(update_fields=["trailer"])
 
 
-
 def save_video_duration(movie_id, source_path):
+    """
+    Retrieves the duration of the video and saves it
+    in the Movie model's duration field.
+    """
     try:
         movie = Movie.objects.get(id=movie_id)
     except Movie.DoesNotExist:
         raise
 
     duration = get_video_duration(source_path)
-
     movie.duration = duration
     movie.save(update_fields=["duration"])
 
+
 def finalize_conversion(path, movie_id):
+    """
+    Deletes the original uploaded video file and resets the video_file field
+    after processing is complete. Also removes the physical file if it still exists.
+    """
     from movies.models import Movie
     movie = Movie.objects.get(id=movie_id)
     if movie.video_file:
@@ -82,10 +101,6 @@ def finalize_conversion(path, movie_id):
 
     if os.path.exists(path):
         os.remove(path)
-    
 
     movie.video_file = None
     movie.save(update_fields=["video_file"])
-        
-
-

@@ -9,13 +9,11 @@ import django_rq
 
 @receiver(post_save, sender=Movie)
 def video_post_save(sender, instance, created, **kwargs):
-    # ← Called after a Movie is saved: if a new video_file is present,
+    #  Called after a Movie is saved: if a new video_file is present,
     #    mark conversion_started and enqueue all processing tasks.
     if not instance.video_file:
         return
-
     path = instance.video_file.path
-
     if not instance.conversion_started:
         instance.conversion_started = True
         instance.save(update_fields=["conversion_started"])
@@ -39,7 +37,7 @@ def video_post_save(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=Movie)
 def auto_delete_file_on_delete(sender, instance, **kwargs):
-    # ← After a Movie is deleted, remove any associated media files.
+    #  After a Movie is deleted, remove any associated media files.
     file_fields = [
         'video_file',
         'thumbnail',

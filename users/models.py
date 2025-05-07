@@ -27,7 +27,6 @@ class CustomUserManager(BaseUserManager):
             ValueError: If no email is provided.
         """
         
-        
         if not email:
             raise ValueError("E-Mail-Adresse ist erforderlich.")
         email = self.normalize_email(email)

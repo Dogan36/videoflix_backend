@@ -16,7 +16,6 @@ class UserViewsTest(APITestCase):
         self.resend_activation_url = reverse('users:resend-activation')
         self.request_reset_url = reverse('users:password-reset')
         self.reset_confirm_url_name = 'users:password-reset-confirm'
-        # Create a user for login/activation tests
         self.user_email = 'test@example.com'
         self.user_password = 'password123'
         self.user = User.objects.create_user(email=self.user_email, password=self.user_password, is_active=False)
@@ -31,17 +30,14 @@ class UserViewsTest(APITestCase):
         User.objects.create_user(email='dup@example.com', password='abc123')
         data = {'email': 'dup@example.com', 'password': 'xyz789'}
         response = self.client.post(self.register_url, data)
-        # For security, do not reveal existence; always return 400
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_login_inactive_user(self):
-        # Attempt to login before activation
         data = {'email': self.user_email, 'password': self.user_password}
         response = self.client.post(self.login_url, data)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_login_success(self):
-        # Activate the user first
         self.user.is_active = True
         self.user.save()
         data = {'email': self.user_email, 'password': self.user_password}
@@ -71,7 +67,6 @@ class UserViewsTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_request_password_reset_success(self):
-        # Needs active user
         self.user.is_active = True
         self.user.save()
         url = self.request_reset_url
@@ -81,11 +76,9 @@ class UserViewsTest(APITestCase):
     def test_request_password_reset_not_found(self):
         url = self.request_reset_url
         response = self.client.post(url, {'email': 'noone@example.com'})
-        # For security, do not reveal non-existence; always return 200
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_reset_password_confirm_success(self):
-        # First request a reset
         self.user.is_active = True
         self.user.save()
         uid = urlsafe_base64_encode(force_bytes(self.user.pk))

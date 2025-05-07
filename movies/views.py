@@ -20,91 +20,90 @@ class HomeMoviesAPIView(APIView):
     Aggregate multiple paginated movie lists for the home screen.
     Supports query parameter:
       - page_size: number of items per section (default: 5)
-    Returns JSON:
-      {
-        newest: { results: [...], next: <url> },
-        recently_watched: { results: [...], next: <url> },
-        finished: { results: [...], next: <url> },
-        categories: [ { category, category_id, results: [...], next }, ... ]
-      }
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         """
-        Handle GET: paginate each section in turn:
-          1) newest by created_at,
-          2) recently watched by latest progress,
-          3) finished by latest progress,
-          4) each category by created_at.
+        Handle GET request: builds and returns the home screen movie sections.
         """
-        user = request.user
+        page_size = self._get_page_size(request)
+        response_data = self._build_home_response(request, page_size)
+        return Response(response_data)
+
+    def _get_page_size(self, request):
         try:
-            page_size = int(request.query_params.get('page_size', 5))
+            return int(request.query_params.get('page_size', 5))
         except ValueError:
-            return Response(
-                {"detail": "Invalid page_size parameter. Must be an integer."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise ValidationError({"detail": "Invalid page_size parameter. Must be an integer."})
 
-        paginator = StandardMoviePagination()
-        paginator.page_size = page_size
+    def _build_home_response(self, request, page_size):
+        """
+        Builds the full JSON response for the home page.
+        """
+        return {
+            "newest": self._get_newest_section(request, page_size),
+            "recently_watched": self._get_recently_watched_section(request, page_size),
+            "finished": self._get_finished_section(request, page_size),
+            "categories": self._get_categories_section(request, page_size),
+        }
 
-        newest_qs = Movie.objects.order_by('-created_at')
-        newest_page = paginator.paginate_queryset(newest_qs, request, view=self)
-        newest_data = MovieSerializer(newest_page, many=True, context={'request': request}).data
-        newest_next = paginator.get_next_link()
+    def _get_newest_section(self, request, page_size):
+        queryset = Movie.objects.order_by('-created_at')
+        return self._paginate_and_serialize(request, queryset, page_size)
 
-        recent_qs = (
+    def _get_recently_watched_section(self, request, page_size):
+        user = request.user
+        queryset = (
             Movie.objects
-                 .filter(progress_entries__user=user, progress_entries__finished=False)
-                 .annotate(
-                     last_progress=Max(
-                         'progress_entries__updated_at',
-                         filter=Q(progress_entries__user=user, 
-                                  progress_entries__finished=False)
-                     )
-                 )
-                 .order_by('-last_progress')
+                .filter(progress_entries__user=user, progress_entries__finished=False)
+                .annotate(
+                    last_progress=Max(
+                        'progress_entries__updated_at',
+                        filter=Q(progress_entries__user=user, progress_entries__finished=False)
+                    )
+                )
+                .order_by('-last_progress')
         )
-        recent_page = paginator.paginate_queryset(recent_qs, request, view=self)
-        recent_data = MovieSerializer(recent_page, many=True, context={'request': request}).data
-        recent_next = paginator.get_next_link()
+        return self._paginate_and_serialize(request, queryset, page_size)
 
-        finished_qs = (
+    def _get_finished_section(self, request, page_size):
+        user = request.user
+        queryset = (
             Movie.objects
-                 .filter(progress_entries__user=user, progress_entries__finished=True)
-                 .annotate(
-                     last_progress=Max(
-                         'progress_entries__updated_at',
-                         filter=Q(progress_entries__user=user, progress_entries__finished=True)
-                     )
-                 )
-                 .order_by('-last_progress')
+                .filter(progress_entries__user=user, progress_entries__finished=True)
+                .annotate(
+                    last_progress=Max(
+                        'progress_entries__updated_at',
+                        filter=Q(progress_entries__user=user, progress_entries__finished=True)
+                    )
+                )
+                .order_by('-last_progress')
         )
-        finished_page = paginator.paginate_queryset(finished_qs, request, view=self)
-        finished_data = MovieSerializer(finished_page, many=True, context={'request': request}).data
-        finished_next = paginator.get_next_link()
+        return self._paginate_and_serialize(request, queryset, page_size)
 
-        category_data = []
+    def _get_categories_section(self, request, page_size):
+        categories_data = []
         for category in Category.objects.all():
-            cat_qs = Movie.objects.filter(categories=category).order_by('-created_at')
-            cat_page = paginator.paginate_queryset(cat_qs, request, view=self)
-            cat_data = MovieSerializer(cat_page, many=True, context={'request': request}).data
-            cat_next = paginator.get_next_link()
-            category_data.append({
+            queryset = Movie.objects.filter(categories=category).order_by('-created_at')
+            section_data = self._paginate_and_serialize(request, queryset, page_size)
+            categories_data.append({
                 "category": category.name,
                 "category_id": category.id,
-                "results": cat_data,
-                "next": cat_next
+                "results": section_data['results'],
+                "next": section_data['next']
             })
+        return categories_data
 
-        return Response({
-            "newest": {"results": newest_data, "next": newest_next},
-            "recently_watched": {"results": recent_data, "next": recent_next},
-            "finished": {"results": finished_data, "next": finished_next},
-            "categories": category_data
-        })
+    def _paginate_and_serialize(self, request, queryset, page_size):
+        paginator = StandardMoviePagination()
+        paginator.page_size = page_size
+        page = paginator.paginate_queryset(queryset, request, view=self)
+        data = MovieSerializer(page, many=True, context={'request': request}).data
+        return {
+            "results": data,
+            "next": paginator.get_next_link()
+        }
 
 
 class MovieDetailAPIView(generics.RetrieveAPIView):
@@ -122,6 +121,8 @@ class MovieStreamView(APIView):
     Stream the MP4 file at the requested resolution using HTTP Range support.
     URL kwargs: pk (movie ID), resolution (e.g. '360').
     """
+    throttle_classes = [VideoStreamRateThrottle]
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, pk, *args, **kwargs):
         movie = get_object_or_404(Movie, pk=pk)
         res = request.query_params.get("resolution", "360")
@@ -162,55 +163,53 @@ class LoadMoreMoviesAPIView(ListAPIView):
     pagination_class = StandardMoviePagination
 
     def get_queryset(self):
-        """
-        Choose the base queryset based on 'section' param:
-          - newest: all movies by created_at,
-          - recently_watched: filter by this user's progress entries,
-          - finished: only those marked finished,
-          - category: movies in given category.
-        """
-        user = self.request.user
-        params = self.request.query_params
-        section = params.get('section')
-
+        section = self.request.query_params.get('section')
         if section == 'newest':
-            return Movie.objects.order_by('-created_at')
-
+            return self._get_newest()
         if section == 'recently_watched':
-            # Annotate each Movie with the latest updated_at from this user's progress entries
-            return (
-                Movie.objects
-                     .filter(progress_entries__user=user)
-                     .annotate(
-                         last_progress=Max(
-                             'progress_entries__updated_at',
-                             filter=Q(progress_entries__user=user)
-                         )
-                     )
-                     .order_by('-last_progress')
-            )
-
+            return self._get_recently_watched()
         if section == 'finished':
-            # Only those the user has marked finished, likewise ordered by latest update
-            return (
-                Movie.objects
-                     .filter(progress_entries__user=user, progress_entries__finished=True)
-                     .annotate(
-                         last_progress=Max(
-                             'progress_entries__updated_at',
-                             filter=Q(
-                                 progress_entries__user=user,
-                                 progress_entries__finished=True
-                             )
-                         )
-                     )
-                     .order_by('-last_progress')
-            )
-
+            return self._get_finished()
         if section == 'category':
-            category_id = params.get('category_id')
-            return Movie.objects.filter(categories__id=category_id).order_by('-created_at')
-
-        # Fallback: leeres QuerySet
+            return self._get_category()
         return Movie.objects.none()
-    
+
+    def _get_newest(self):
+        return Movie.objects.order_by('-created_at')
+
+    def _get_recently_watched(self):
+        user = self.request.user
+        return (
+            Movie.objects
+                .filter(progress_entries__user=user)
+                .annotate(
+                    last_progress=Max(
+                        'progress_entries__updated_at',
+                        filter=Q(progress_entries__user=user)
+                    )
+                )
+                .order_by('-last_progress')
+        )
+
+    def _get_finished(self):
+        user = self.request.user
+        return (
+            Movie.objects
+                .filter(progress_entries__user=user, progress_entries__finished=True)
+                .annotate(
+                    last_progress=Max(
+                        'progress_entries__updated_at',
+                        filter=Q(
+                            progress_entries__user=user,
+                            progress_entries__finished=True
+                        )
+                    )
+                )
+                .order_by('-last_progress')
+        )
+
+    def _get_category(self):
+        category_id = self.request.query_params.get('category_id')
+        if not category_id:
+            return Movie.objects.none()
+        return Movie.objects.filter(categories__id=category_id).order_by('-created_at')
