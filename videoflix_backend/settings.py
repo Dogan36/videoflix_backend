@@ -111,8 +111,8 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.AnonRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'user': '500/day',
-        'anon': '100/day', 
+        'user': '1000/day',
+        'anon': '1000/day', 
         'video_stream': '30/minute',
     }
 }
